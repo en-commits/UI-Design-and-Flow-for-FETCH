@@ -266,7 +266,7 @@ const NAV_SECTIONS = [
     items: [
       { label: "Dashboard",          icon: "dashboard", page: null       },
       { label: "Sales",              icon: "sales",     page: null       },
-      { label: "Customers",          icon: "customers", page: null       },
+      { label: "Customers",          icon: "customers", page: "customers"  },
       { label: "Verify Invoice",     icon: "invoice",   page: null       },
     ],
   },
@@ -351,58 +351,8 @@ function NavItem({ item, activePage, navigate, depth = 0 }) {
   );
 }
 
-export function Sidebar({ activePage, navigate }) {
-  return (
-    <aside style={{ width: 224, flexShrink: 0, background: "#fff", borderRight: "1px solid #ebebeb", display: "flex", flexDirection: "column", padding: "0 10px 20px", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 100 }}>
-
-      {/* Logo */}
-      <div style={{ padding: "18px 8px 16px", borderBottom: "1px solid #f0f0f0", marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 38, height: 38, background: "#e8472a", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 16, color: "#1a1f36", lineHeight: 1.1, letterSpacing: -0.3 }}>FETCH<sup style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0 }}>TM</sup></div>
-            <div style={{ fontSize: 9.5, color: "#9ca3af", marginTop: 2 }}>Let's File Smarter, Together</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Nav sections */}
-      <div style={{ flex: 1, overflowY: "auto" }}>
-        {NAV_SECTIONS.map((section, si) => (
-          <div key={section.label} style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#c0c6d4", letterSpacing: 1, padding: "6px 10px 4px", textTransform: "uppercase" }}>
-              {section.label}
-            </div>
-            {section.items.map(item => (
-              <NavItem key={item.label} item={item} activePage={activePage} navigate={navigate} />
-            ))}
-            {si < NAV_SECTIONS.length - 1 && (
-              <div style={{ height: 1, background: "#f0f2f5", margin: "8px 4px 0" }} />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Logout */}
-      <div style={{ borderTop: "1px solid #f0f2f5", paddingTop: 10, marginTop: 4 }}>
-        <a href="#" onClick={e => e.preventDefault()}
-          style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 8, fontSize: 13.5, textDecoration: "none", color: "#e8472a", fontWeight: 500, borderLeft: "3px solid transparent" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "#fef2f0"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-        >
-          <span style={{ color: "#e8472a", display: "flex" }}>{NAV_ICONS.logout}</span>
-          Logout
-        </a>
-      </div>
-    </aside>
-  );
-}
-
 // ─── CUSTOM SELECT ────────────────────────────────────────────────────────────
-// options = [{ value, label }] or plain strings
-// searchable = true adds a search input at the top
+// options = [{ value, label }] or plain strings. searchable adds a filter input.
 export function CustomSelect({ label, value, onChange, options, searchable = false, placeholder = "Select..." }) {
   const [open, setOpen]   = useState(false);
   const [query, setQuery] = useState("");
@@ -449,5 +399,54 @@ export function CustomSelect({ label, value, onChange, options, searchable = fal
         </div>
       )}
     </div>
+  );
+}
+
+export function Sidebar({ activePage, navigate }) {
+  return (
+    <aside style={{ width: 224, flexShrink: 0, background: "#fff", borderRight: "1px solid #ebebeb", display: "flex", flexDirection: "column", padding: "0 10px 20px", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 100 }}>
+
+      {/* Logo */}
+      <div style={{ padding: "18px 8px 16px", borderBottom: "1px solid #f0f0f0", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 38, height: 38, background: "#e8472a", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: "#1a1f36", lineHeight: 1.1, letterSpacing: -0.3 }}>FETCH<sup style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0 }}>TM</sup></div>
+            <div style={{ fontSize: 9.5, color: "#9ca3af", marginTop: 2 }}>Let's File Smarter, Together</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav sections */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        {NAV_SECTIONS.map((section, si) => (
+          <div key={section.label} style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#c0c6d4", letterSpacing: 1, padding: "6px 10px 4px", textTransform: "uppercase" }}>
+              {section.label}
+            </div>
+            {section.items.map(item => (
+              <NavItem key={item.label} item={item} activePage={activePage} navigate={navigate} />
+            ))}
+            {si < NAV_SECTIONS.length - 1 && (
+              <div style={{ height: 1, background: "#f0f2f5", margin: "8px 4px 0" }} />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Logout */}
+      <div style={{ borderTop: "1px solid #f0f2f5", paddingTop: 10, marginTop: 4 }}>
+        <a href="#" onClick={e => e.preventDefault()}
+          style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 8, fontSize: 13.5, textDecoration: "none", color: "#e8472a", fontWeight: 500, borderLeft: "3px solid transparent" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "#fef2f0"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+        >
+          <span style={{ color: "#e8472a", display: "flex" }}>{NAV_ICONS.logout}</span>
+          Logout
+        </a>
+      </div>
+    </aside>
   );
 }

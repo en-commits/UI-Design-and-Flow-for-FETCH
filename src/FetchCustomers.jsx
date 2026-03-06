@@ -293,8 +293,8 @@ export default function FetchCustomers({ navigate }) {
   );
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", width: "100%", background: "#f4f5f7", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-      <style>{`*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }`}</style>
+    <div style={{ display: "flex", minHeight: "100vh", width: "100vw", background: "#f4f5f7", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+      <style>{`*, *::before, *::after{box-sizing:border-box;margin:0;padding:0}html,body,#root{width:100%;min-height:100vh}`}</style>
 
       <Sidebar activePage="customers" navigate={navigate} />
 

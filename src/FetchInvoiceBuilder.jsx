@@ -59,14 +59,25 @@ const nextInvoiceNumber = () => {
   return `INV-${year}-${num}`;
 };
 
+// IRN format: INV001-94ND90NR-20240611
+const generateIRN = (invoiceNum) => {
+  const prefix  = invoiceNum.replace("INV-", "INV").replace(/-\d+$/, "").replace("-","");
+  const chars   = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
+  const rand8   = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  return `${prefix}-${rand8}-${dateStr}`;
+};
+
 const blankLine = () => ({
   id: Date.now() + Math.random(),
-  sku: "", name: "", description: "", qty: 1, unitPrice: 0, discount: 0, taxRate: 7.5,
+  sku: "", name: "", description: "", qty: 1, unitPrice: 0, discount: 0, discountType: "%", taxRate: 7.5,
 });
 
 const lineTotal  = l => {
   const gross    = l.qty * l.unitPrice;
-  const discAmt  = gross * (l.discount / 100);
+  const discAmt  = l.discountType === "₦"
+    ? Math.min(l.discount, gross)
+    : gross * (l.discount / 100);
   const net      = gross - discAmt;
   const taxAmt   = net * (l.taxRate / 100);
   return { gross, discAmt, net, taxAmt, total: net + taxAmt };
@@ -162,31 +173,47 @@ function LineRow({ line, onChange, onRemove, idx }) {
       {/* Unit Price */}
       <td style={{ padding: "8px 6px", verticalAlign: "top", width: 120 }}>{numInp(line.unitPrice, "unitPrice")}</td>
 
-      {/* Discount % */}
-      <td style={{ padding: "8px 6px", verticalAlign: "top", width: 80 }}>{numInp(line.discount, "discount")}</td>
+      {/* Discount — flat or % toggle */}
+      <td style={{ padding: "8px 6px", verticalAlign: "top", width: 110 }}>
+        <div style={{ display: "flex", border: "1px solid #e5e7eb", borderRadius: 7, overflow: "hidden", background: "#fff" }}>
+          <input
+            type="number" min={0} value={line.discount}
+            onChange={e => onChange({ ...line, discount: parseFloat(e.target.value) || 0 })}
+            style={{ flex: 1, padding: "8px 6px", border: "none", fontSize: 13.5, color: "#1a1f36", outline: "none", fontFamily: "inherit", width: 0, textAlign: "right", MozAppearance: "textfield" }}
+          />
+          <button
+            onClick={() => onChange({ ...line, discountType: line.discountType === "%" ? "₦" : "%" })}
+            title="Toggle flat / percentage discount"
+            style={{ flexShrink: 0, padding: "0 8px", border: "none", borderLeft: "1px solid #e5e7eb", background: "#f8f9fb", cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "#6b7280", minWidth: 32 }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#e8472a"; e.currentTarget.style.color = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#f8f9fb"; e.currentTarget.style.color = "#6b7280"; }}>
+            {line.discountType || "%"}
+          </button>
+        </div>
+      </td>
 
       {/* Tax % */}
       <td style={{ padding: "8px 6px", verticalAlign: "top", width: 80 }}>{numInp(line.taxRate, "taxRate")}</td>
 
-      {/* Line Total */}
-      <td style={{ padding: "8px 12px", verticalAlign: "top", width: 130, textAlign: "right" }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: "#1a1f36", paddingTop: 9 }}>{fmt(total)}</div>
-        {(line.discount > 0 || line.taxRate > 0) && (
-          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, lineHeight: 1.5 }}>
-            {line.discount > 0 && <div>Disc: -{fmt(discAmt)}</div>}
-            {line.taxRate > 0  && <div>Tax: +{fmt(taxAmt)}</div>}
+      {/* Line Total + Remove — combined cell */}
+      <td style={{ padding: "8px 12px", verticalAlign: "middle", width: 160, textAlign: "right" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "#1a1f36" }}>{fmt(total)}</div>
+            {(line.discount > 0 || line.taxRate > 0) && (
+              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2, lineHeight: 1.5 }}>
+                {line.discount > 0 && <div>Disc: -{fmt(discAmt)}</div>}
+                {line.taxRate > 0  && <div>Tax: +{fmt(taxAmt)}</div>}
+              </div>
+            )}
           </div>
-        )}
-      </td>
-
-      {/* Remove */}
-      <td style={{ padding: "8px 8px", verticalAlign: "top", width: 36, textAlign: "center" }}>
-        <button onClick={onRemove}
-          style={{ width: 28, height: 28, marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", background: "#f4f5f7", border: "none", borderRadius: 6, cursor: "pointer", color: "#9ca3af" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "#fde8e4"; e.currentTarget.style.color = "#e8472a"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "#f4f5f7"; e.currentTarget.style.color = "#9ca3af"; }}>
-          {Ico.trash}
-        </button>
+          <button onClick={onRemove}
+            style={{ flexShrink: 0, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "1.5px solid #fca5a5", borderRadius: 6, cursor: "pointer", color: "#f87171", fontSize: 16, fontWeight: 700, lineHeight: 1 }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#e8472a"; e.currentTarget.style.borderColor = "#e8472a"; e.currentTarget.style.color = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.borderColor = "#fca5a5"; e.currentTarget.style.color = "#f87171"; }}>
+            ×
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -204,9 +231,21 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
   const [dueDate, setDueDate]            = useState(isEdit ? "" : addDays(today(), 30));
   const [lines, setLines]                = useState(isEdit ? [] : [blankLine()]);
   const [globalDiscount, setGlobalDiscount] = useState(0);
+  const [extraCharges, setExtraCharges]  = useState([]);   // [{ id, label, amount }]
+  const [deposit, setDeposit]            = useState(0);
   const [notes, setNotes]                = useState("");
   const [terms, setTerms]                = useState("Payment is due within the agreed payment terms. Late payments may attract interest.");
   const [saved, setSaved]                = useState(false);
+  const [irn, setIrn]                    = useState(() => {
+    if (!isEdit) return null;
+    if (invoiceData?.irn) return invoiceData.irn;
+    // Auto-generate IRN for statuses that should already be validated
+    const validated = ["Paid", "Partially Paid", "Overdue", "Sent"];
+    if (validated.includes(invoiceData?.status)) return generateIRN(invoiceData.number);
+    return null;
+  });
+  const [validating, setValidating]      = useState(false);
+  const [copied, setCopied]              = useState(false);
 
   // Recalculate due date when terms change
   useEffect(() => {
@@ -221,19 +260,51 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
     return { subtotal: acc.subtotal + t.net, tax: acc.tax + t.taxAmt, discount: acc.discount + t.discAmt };
   }, { subtotal: 0, tax: 0, discount: 0 });
 
-  const globalDiscAmt  = linesSummary.subtotal * (globalDiscount / 100);
-  const grandTotal     = linesSummary.subtotal - globalDiscAmt + linesSummary.tax;
-  const totalDiscount  = linesSummary.discount + globalDiscAmt;
+  const globalDiscAmt   = linesSummary.subtotal * (globalDiscount / 100);
+  const extraChargesTotal = extraCharges.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+  const grandTotal      = linesSummary.subtotal - globalDiscAmt + linesSummary.tax + extraChargesTotal;
+  const totalDiscount   = linesSummary.discount + globalDiscAmt;
+  const amountDue       = Math.max(0, grandTotal - (parseFloat(deposit) || 0));
+
+  const addCharge    = () => setExtraCharges(cs => [...cs, { id: Date.now(), label: "", amount: "" }]);
+  const updateCharge = (id, field, val) => setExtraCharges(cs => cs.map(c => c.id === id ? { ...c, [field]: val } : c));
+  const removeCharge = id => setExtraCharges(cs => cs.filter(c => c.id !== id));
 
   const updateLine = (id, updated) => setLines(ls => ls.map(l => l.id === id ? updated : l));
   const removeLine = id => setLines(ls => ls.filter(l => l.id !== id));
   const addLine    = () => setLines(ls => [...ls, blankLine()]);
 
   const handleSave = (newStatus = status) => {
+    if (newStatus === "Sent" && !irn) {
+      // Simulate FIRS validation — generate IRN after short delay
+      setValidating(true);
+      setTimeout(() => {
+        const generated = generateIRN(invoiceNumber);
+        setIrn(generated);
+        setValidating(false);
+        setStatus("Sent");
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      }, 2200);
+      return;
+    }
     setStatus(newStatus);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
+
+  const copyIRN = () => {
+    if (!irn) return;
+    navigator.clipboard.writeText(irn).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const isDraft    = status === "Draft";
+  const isReadOnly = status === "Paid" || status === "Cancelled";
+  const isSent     = status === "Sent";
+  const isPartial  = status === "Partially Paid";
+  const isOverdue  = status === "Overdue";
 
   const STATUS_COLORS = {
     "Draft":    { color: "#6b7280", bg: "#f4f5f7" },
@@ -251,6 +322,7 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
         html, body, #root { width: 100%; min-height: 100vh }
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
       `}</style>
 
       {/* ── Sticky Top Bar ── */}
@@ -267,10 +339,22 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 15, fontWeight: 800, color: "#1a1f36", letterSpacing: -0.3 }}>{invoiceNumber}</span>
             <span style={{ fontSize: 12, fontWeight: 700, color: sc.color, background: sc.bg, borderRadius: 20, padding: "3px 10px" }}>{status}</span>
+            {irn && (
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 20, padding: "3px 10px" }}>
+                <svg width={11} height={11} fill="none" stroke="#16a34a" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                FIRS Validated
+              </span>
+            )}
+            {validating && (
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 20, padding: "3px 10px" }}>
+                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth={2.5} style={{ animation: "spin 1s linear infinite" }}><path strokeLinecap="round" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                Submitting to FIRS…
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Right: actions */}
+        {/* Right: status-aware actions */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {saved && (
             <span style={{ fontSize: 12.5, color: "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: 4, animation: "fadeIn .3s ease" }}>
@@ -278,18 +362,89 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
               Saved
             </span>
           )}
-          <button onClick={() => handleSave("Draft")}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", border: "1px solid #e5e7eb", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#374151" }}
-            onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"}
-            onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
-            {Ico.save} Save Draft
-          </button>
-          <button onClick={() => handleSave("Sent")}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", border: "none", borderRadius: 7, background: "#e8472a", cursor: "pointer", fontSize: 13.5, fontWeight: 700, color: "#fff", boxShadow: "0 2px 8px rgba(232,71,42,.3)" }}
-            onMouseEnter={e => e.currentTarget.style.background = "#d03d22"}
-            onMouseLeave={e => e.currentTarget.style.background = "#e8472a"}>
-            {Ico.send} Send Invoice
-          </button>
+
+          {/* Draft */}
+          {isDraft && <>
+            <button onClick={() => handleSave("Draft")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", border: "1px solid #e5e7eb", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#374151" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+              {Ico.save} Save Draft
+            </button>
+            <button onClick={() => handleSave("Sent")} disabled={validating}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", border: "none", borderRadius: 7, background: validating ? "#f0b4a8" : "#e8472a", cursor: validating ? "not-allowed" : "pointer", fontSize: 13.5, fontWeight: 700, color: "#fff", boxShadow: validating ? "none" : "0 2px 8px rgba(232,71,42,.3)", transition: "background .2s" }}>
+              {validating
+                ? <><svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} style={{ animation: "spin 1s linear infinite" }}><path strokeLinecap="round" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Validating with FIRS…</>
+                : <>{Ico.send} Send Invoice</>}
+            </button>
+          </>}
+
+          {/* Sent */}
+          {isSent && <>
+            <button onClick={() => handleSave("Partially Paid")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #e5e7eb", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#374151" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+              Partially Paid
+            </button>
+            <button onClick={() => handleSave("Cancelled")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #fca5a5", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#dc2626" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#fef2f2"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}>
+              Cancel Invoice
+            </button>
+            <button onClick={() => handleSave("Paid")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", border: "none", borderRadius: 7, background: "#16a34a", cursor: "pointer", fontSize: 13.5, fontWeight: 700, color: "#fff", boxShadow: "0 2px 8px rgba(22,163,74,.3)" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#15803d"}
+              onMouseLeave={e => e.currentTarget.style.background = "#16a34a"}>
+              ✓ Mark as Paid
+            </button>
+          </>}
+
+          {/* Partially Paid */}
+          {isPartial && <>
+            <button onClick={() => handleSave("Cancelled")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #fca5a5", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#dc2626" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+              Cancel Invoice
+            </button>
+            <button onClick={() => handleSave("Paid")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", border: "none", borderRadius: 7, background: "#16a34a", cursor: "pointer", fontSize: 13.5, fontWeight: 700, color: "#fff", boxShadow: "0 2px 8px rgba(22,163,74,.3)" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#15803d"}
+              onMouseLeave={e => e.currentTarget.style.background = "#16a34a"}>
+              ✓ Mark as Paid
+            </button>
+          </>}
+
+          {/* Overdue */}
+          {isOverdue && <>
+            <button onClick={() => handleSave("Sent")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #e5e7eb", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#374151" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+              {Ico.send} Send Reminder
+            </button>
+            <button onClick={() => handleSave("Cancelled")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #fca5a5", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#dc2626" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+              Cancel Invoice
+            </button>
+            <button onClick={() => handleSave("Paid")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", border: "none", borderRadius: 7, background: "#16a34a", cursor: "pointer", fontSize: 13.5, fontWeight: 700, color: "#fff", boxShadow: "0 2px 8px rgba(22,163,74,.3)" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#15803d"}
+              onMouseLeave={e => e.currentTarget.style.background = "#16a34a"}>
+              ✓ Mark as Paid
+            </button>
+          </>}
+
+          {/* Read-only */}
+          {isReadOnly && (
+            <span style={{ fontSize: 13, color: "#9ca3af", fontStyle: "italic" }}>
+              {status === "Paid" ? "This invoice has been paid." : "This invoice has been cancelled."}
+            </span>
+          )}
         </div>
       </div>
 
@@ -323,6 +478,37 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
                 </span>
               </div>
             </div>
+
+            {/* ── IRN Row — only shown after FIRS validation ── */}
+            {(irn || validating) && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #f0f0f0" }}>
+                <Field label="Invoice Reference Number (IRN)">
+                  {validating ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "1px solid #fde68a", borderRadius: 8, background: "#fffbeb" }}>
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth={2.5} style={{ flexShrink: 0, animation: "spin 1s linear infinite" }}><path strokeLinecap="round" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                      <span style={{ fontSize: 13, color: "#b45309", fontWeight: 600 }}>Submitting invoice to FIRS for validation…</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", border: "1px solid #bbf7d0", borderRadius: 8, background: "#f0fdf4" }}>
+                        <svg width={14} height={14} fill="none" stroke="#16a34a" strokeWidth={2.5} viewBox="0 0 24 24" style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        <span style={{ fontFamily: "monospace", fontSize: 13.5, fontWeight: 700, color: "#1a1f36", letterSpacing: 0.5 }}>{irn}</span>
+                        <span style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 700, color: "#16a34a" }}>FIRS Validated ✓</span>
+                      </div>
+                      <button onClick={copyIRN}
+                        title="Copy IRN"
+                        style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: 8, background: copied ? "#f0fdf4" : "#fff", cursor: "pointer", fontSize: 12.5, fontWeight: 600, color: copied ? "#16a34a" : "#374151", transition: "all .2s" }}
+                        onMouseEnter={e => { if (!copied) e.currentTarget.style.background = "#f4f5f7"; }}
+                        onMouseLeave={e => { if (!copied) e.currentTarget.style.background = "#fff"; }}>
+                        {copied
+                          ? <><svg width={13} height={13} fill="none" stroke="#16a34a" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg> Copied!</>
+                          : <><svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path strokeLinecap="round" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy</>}
+                      </button>
+                    </div>
+                  )}
+                </Field>
+              </div>
+            )}
           </div>
 
           {/* ── Bill To ── */}
@@ -364,7 +550,7 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#f8f9fb" }}>
-                    {["#","Item","Qty","Unit Price (₦)","Disc %","Tax %","Total",""].map((h, i) => (
+                    {["#","Item","Qty","Unit Price (₦)","Discount","Tax %","Total"].map((h, i) => (
                       <th key={i} style={{ padding: "10px 12px", fontSize: 11, fontWeight: 700, color: "#b0b7c3", textTransform: "uppercase", letterSpacing: 0.6, textAlign: i >= 2 ? "right" : "left", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
@@ -414,13 +600,15 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
           {/* Summary card */}
           <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden" }}>
             <div style={{ padding: "18px 20px", borderBottom: "1px solid #f0f0f0", fontSize: 13, fontWeight: 700, color: "#374151" }}>Summary</div>
-            <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 11 }}>
 
+              {/* Subtotal */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 13, color: "#6b7280" }}>Subtotal</span>
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: "#1a1f36" }}>{fmt(linesSummary.subtotal + linesSummary.discount)}</span>
               </div>
 
+              {/* Line discounts */}
               {linesSummary.discount > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: 13, color: "#6b7280" }}>Line Discounts</span>
@@ -428,15 +616,15 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
                 </div>
               )}
 
-              {/* Global discount */}
+              {/* Invoice-level discount */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 13, color: "#6b7280", flexShrink: 0 }}>Invoice Discount</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <input type="number" min={0} max={100} value={globalDiscount}
                     onChange={e => setGlobalDiscount(parseFloat(e.target.value) || 0)}
-                    style={{ width: 54, padding: "4px 7px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, textAlign: "right", outline: "none", fontFamily: "inherit" }} />
+                    style={{ width: 50, padding: "4px 6px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, textAlign: "right", outline: "none", fontFamily: "inherit" }} />
                   <span style={{ fontSize: 13, color: "#9ca3af" }}>%</span>
-                  {globalDiscAmt > 0 && <span style={{ fontSize: 13, color: "#dc2626", fontWeight: 600 }}>-{fmt(globalDiscAmt)}</span>}
+                  {globalDiscAmt > 0 && <span style={{ fontSize: 13, color: "#dc2626", fontWeight: 600, marginLeft: 2 }}>-{fmt(globalDiscAmt)}</span>}
                 </div>
               </div>
 
@@ -447,20 +635,93 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
                 </div>
               )}
 
+              {/* VAT / Tax */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 13, color: "#6b7280" }}>VAT / Tax</span>
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: "#1a1f36" }}>+{fmt(linesSummary.tax)}</span>
               </div>
 
-              <div style={{ height: 1, background: "#f0f0f0", margin: "4px 0" }} />
+              {/* ── Extra Charges ── */}
+              <div style={{ borderTop: "1px dashed #e5e7eb", paddingTop: 10, display: "flex", flexDirection: "column", gap: 7 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.4 }}>Extra Charges</span>
+                  <button onClick={addCharge}
+                    style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, color: "#e8472a", background: "none", border: "none", cursor: "pointer", padding: "2px 4px", borderRadius: 4 }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#fef2f0"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                    {Ico.plus} Add
+                  </button>
+                </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1f36" }}>Total Due</span>
-                <span style={{ fontSize: 20, fontWeight: 800, color: "#e8472a", letterSpacing: -0.5 }}>{fmt(grandTotal)}</span>
+                {extraCharges.length === 0 && (
+                  <div style={{ fontSize: 12, color: "#d1d5db", textAlign: "center", padding: "4px 0" }}>No extra charges</div>
+                )}
+
+                {extraCharges.map(c => (
+                  <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      value={c.label} onChange={e => updateCharge(c.id, "label", e.target.value)}
+                      placeholder="e.g. Delivery fee"
+                      style={{ flex: 1, padding: "5px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12.5, outline: "none", fontFamily: "inherit", minWidth: 0 }} />
+                    <input
+                      type="number" min={0} value={c.amount} onChange={e => updateCharge(c.id, "amount", e.target.value)}
+                      placeholder="0"
+                      style={{ width: 72, padding: "5px 7px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12.5, textAlign: "right", outline: "none", fontFamily: "inherit" }} />
+                    <button onClick={() => removeCharge(c.id)}
+                      style={{ flexShrink: 0, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "1px solid #fca5a5", borderRadius: 5, cursor: "pointer", color: "#f87171", fontSize: 14, fontWeight: 700, lineHeight: 1 }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#e8472a"; e.currentTarget.style.borderColor = "#e8472a"; e.currentTarget.style.color = "#fff"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.borderColor = "#fca5a5"; e.currentTarget.style.color = "#f87171"; }}>
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                {extraChargesTotal > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 2 }}>
+                    <span style={{ fontSize: 13, color: "#6b7280" }}>Charges Total</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "#374151" }}>+{fmt(extraChargesTotal)}</span>
+                  </div>
+                )}
               </div>
 
+              {/* Grand Total */}
+              <div style={{ height: 1, background: "#e5e7eb", margin: "2px 0" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: "#1a1f36" }}>Grand Total</span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: "#1a1f36" }}>{fmt(grandTotal)}</span>
+              </div>
+
+              {/* ── Deposit ── */}
+              <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 13, color: "#6b7280", flexShrink: 0 }}>Deposit Paid</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ fontSize: 13, color: "#9ca3af" }}>₦</span>
+                    <input type="number" min={0} value={deposit}
+                      onChange={e => setDeposit(e.target.value)}
+                      placeholder="0"
+                      style={{ width: 100, padding: "4px 7px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, textAlign: "right", outline: "none", fontFamily: "inherit", background: "#fff" }} />
+                  </div>
+                </div>
+                {parseFloat(deposit) > 0 && (
+                  <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                    Amount collected prior to invoice issuance.
+                  </div>
+                )}
+              </div>
+
+              {/* Amount Due */}
+              <div style={{ height: 2, background: "#1a1f36", borderRadius: 1, margin: "2px 0" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: "#1a1f36" }}>Amount Due</span>
+                <span style={{ fontSize: 22, fontWeight: 800, color: amountDue === 0 ? "#16a34a" : "#e8472a", letterSpacing: -0.5 }}>{fmt(amountDue)}</span>
+              </div>
+              {amountDue === 0 && parseFloat(deposit) > 0 && (
+                <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 600, textAlign: "right", marginTop: -6 }}>✓ Fully settled by deposit</div>
+              )}
+
               {lines.length > 0 && (
-                <div style={{ fontSize: 12, color: "#9ca3af", textAlign: "right", marginTop: -6 }}>
+                <div style={{ fontSize: 12, color: "#9ca3af", textAlign: "right" }}>
                   {lines.filter(l => l.name).length} of {lines.length} items priced
                 </div>
               )}
@@ -483,20 +744,74 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
             ))}
           </div>
 
-          {/* Quick actions */}
+          {/* Quick actions — status aware */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button onClick={() => handleSave("Sent")}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "none", borderRadius: 8, background: "#e8472a", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#fff", boxShadow: "0 2px 10px rgba(232,71,42,.3)" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#d03d22"}
-              onMouseLeave={e => e.currentTarget.style.background = "#e8472a"}>
-              {Ico.send} Send Invoice
-            </button>
-            <button onClick={() => handleSave("Draft")}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px", border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#374151" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"}
-              onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
-              {Ico.save} Save Draft
-            </button>
+            {isDraft && <>
+              <button onClick={() => handleSave("Sent")} disabled={validating}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "none", borderRadius: 8, background: validating ? "#f0b4a8" : "#e8472a", cursor: validating ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700, color: "#fff", boxShadow: validating ? "none" : "0 2px 10px rgba(232,71,42,.3)", transition: "background .2s" }}>
+                {validating
+                  ? <><svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} style={{ animation: "spin 1s linear infinite" }}><path strokeLinecap="round" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Validating with FIRS…</>
+                  : <>{Ico.send} Send Invoice</>}
+              </button>
+              <button onClick={() => handleSave("Draft")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px", border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#374151" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"}
+                onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+                {Ico.save} Save Draft
+              </button>
+            </>}
+
+            {(isSent || isOverdue) && <>
+              <button onClick={() => handleSave("Paid")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "none", borderRadius: 8, background: "#16a34a", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#fff", boxShadow: "0 2px 10px rgba(22,163,74,.3)" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#15803d"}
+                onMouseLeave={e => e.currentTarget.style.background = "#16a34a"}>
+                ✓ Mark as Paid
+              </button>
+              {isSent && (
+                <button onClick={() => handleSave("Partially Paid")}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px", border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#374151" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"}
+                  onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+                  Partially Paid
+                </button>
+              )}
+              {isOverdue && (
+                <button onClick={() => handleSave("Sent")}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px", border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#374151" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"}
+                  onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+                  {Ico.send} Send Reminder
+                </button>
+              )}
+              <button onClick={() => handleSave("Cancelled")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px", border: "1px solid #fca5a5", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#dc2626" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+                onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+                Cancel Invoice
+              </button>
+            </>}
+
+            {isPartial && <>
+              <button onClick={() => handleSave("Paid")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "none", borderRadius: 8, background: "#16a34a", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#fff", boxShadow: "0 2px 10px rgba(22,163,74,.3)" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#15803d"}
+                onMouseLeave={e => e.currentTarget.style.background = "#16a34a"}>
+                ✓ Mark as Paid
+              </button>
+              <button onClick={() => handleSave("Cancelled")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px", border: "1px solid #fca5a5", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13.5, fontWeight: 600, color: "#dc2626" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+                onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+                Cancel Invoice
+              </button>
+            </>}
+
+            {isReadOnly && (
+              <div style={{ padding: "14px", background: status === "Paid" ? "#f0fdf4" : "#f9fafb", border: `1px solid ${status === "Paid" ? "#bbf7d0" : "#e5e7eb"}`, borderRadius: 8, textAlign: "center", fontSize: 13, fontWeight: 600, color: status === "Paid" ? "#16a34a" : "#9ca3af" }}>
+                {status === "Paid" ? "✓ Invoice fully paid" : "✕ Invoice cancelled"}
+              </div>
+            )}
           </div>
         </div>
       </div>

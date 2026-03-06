@@ -2,15 +2,17 @@ import { useState } from "react";
 import { DataTable, FilterBar, Toggle, Ico as SharedIco, Sidebar } from "./FetchShared";
 
 // ─── SAMPLE DATA ──────────────────────────────────────────────────────────────
+const VALIDATED_STATUSES = ["Paid", "Partially Paid", "Overdue", "Sent"];
+
 const INITIAL_INVOICES = [
-  { id: 1, number: "INV-2026-001", customer: "Apex Technologies Ltd",  issueDate: "Jan 5, 2026",  dueDate: "Feb 4, 2026",  total: 450000,  amountPaid: 450000,  status: "Paid",           items: 3 },
-  { id: 2, number: "INV-2026-002", customer: "Chukwuemeka Obi",        issueDate: "Jan 12, 2026", dueDate: "Jan 27, 2026", total: 85000,   amountPaid: 40000,   status: "Partially Paid", items: 2 },
-  { id: 3, number: "INV-2026-003", customer: "BlueSky Logistics",      issueDate: "Jan 18, 2026", dueDate: "Feb 2, 2026",  total: 1200000, amountPaid: 0,       status: "Overdue",        items: 5 },
-  { id: 4, number: "INV-2026-004", customer: "Fatima Al-Hassan",       issueDate: "Feb 1, 2026",  dueDate: "Mar 3, 2026",  total: 320000,  amountPaid: 0,       status: "Sent",           items: 4 },
-  { id: 5, number: "INV-2026-005", customer: "GreenBuild Contractors", issueDate: "Feb 10, 2026", dueDate: "Mar 12, 2026", total: 75000,   amountPaid: 0,       status: "Draft",          items: 1 },
-  { id: 6, number: "INV-2026-006", customer: "Apex Technologies Ltd",  issueDate: "Feb 14, 2026", dueDate: "Mar 16, 2026", total: 560000,  amountPaid: 0,       status: "Sent",           items: 6 },
-  { id: 7, number: "INV-2026-007", customer: "Chukwuemeka Obi",        issueDate: "Feb 20, 2026", dueDate: "Mar 7, 2026",  total: 48000,   amountPaid: 0,       status: "Cancelled",      items: 2 },
-  { id: 8, number: "INV-2026-008", customer: "BlueSky Logistics",      issueDate: "Mar 1, 2026",  dueDate: "Mar 31, 2026", total: 980000,  amountPaid: 0,       status: "Draft",          items: 7 },
+  { id: 1, number: "INV-2026-001", customer: "Apex Technologies Ltd",  issueDate: "Jan 5, 2026",  dueDate: "Feb 4, 2026",  total: 450000,  amountPaid: 450000, status: "Paid",           items: 3, irn: "INV2026001-K4TR82NP-20260105" },
+  { id: 2, number: "INV-2026-002", customer: "Chukwuemeka Obi",        issueDate: "Jan 12, 2026", dueDate: "Jan 27, 2026", total: 85000,   amountPaid: 40000,  status: "Partially Paid", items: 2, irn: "INV2026002-A9QZ55BX-20260112" },
+  { id: 3, number: "INV-2026-003", customer: "BlueSky Logistics",      issueDate: "Jan 18, 2026", dueDate: "Feb 2, 2026",  total: 1200000, amountPaid: 0,      status: "Overdue",        items: 5, irn: "INV2026003-M7WC19DL-20260118" },
+  { id: 4, number: "INV-2026-004", customer: "Fatima Al-Hassan",       issueDate: "Feb 1, 2026",  dueDate: "Mar 3, 2026",  total: 320000,  amountPaid: 0,      status: "Sent",           items: 4, irn: "INV2026004-H2YF73RK-20260201" },
+  { id: 5, number: "INV-2026-005", customer: "GreenBuild Contractors", issueDate: "Feb 10, 2026", dueDate: "Mar 12, 2026", total: 75000,   amountPaid: 0,      status: "Draft",          items: 1, irn: null },
+  { id: 6, number: "INV-2026-006", customer: "Apex Technologies Ltd",  issueDate: "Feb 14, 2026", dueDate: "Mar 16, 2026", total: 560000,  amountPaid: 0,      status: "Sent",           items: 6, irn: "INV2026006-T6NB44JU-20260214" },
+  { id: 7, number: "INV-2026-007", customer: "Chukwuemeka Obi",        issueDate: "Feb 20, 2026", dueDate: "Mar 7, 2026",  total: 48000,   amountPaid: 0,      status: "Cancelled",      items: 2, irn: null },
+  { id: 8, number: "INV-2026-008", customer: "BlueSky Logistics",      issueDate: "Mar 1, 2026",  dueDate: "Mar 31, 2026", total: 980000,  amountPaid: 0,      status: "Draft",          items: 7, irn: null },
 ];
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
@@ -151,7 +153,17 @@ export default function FetchInvoices({ navigate }) {
           {/* Table */}
           <DataTable
             columns={[
-              { key: "number",   label: "Invoice #",  width: "140px", render: v => <span style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: "#1a1f36" }}>{v}</span> },
+              { key: "number",   label: "Invoice #",  width: "160px", render: (v, row) => (
+                <div>
+                  <span style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: "#1a1f36" }}>{v}</span>
+                  {row.irn && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                      <svg width={10} height={10} fill="none" stroke="#16a34a" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: "#16a34a", letterSpacing: 0.3 }}>FIRS Validated</span>
+                    </div>
+                  )}
+                </div>
+              )},
               { key: "customer", label: "Customer",   width: "1.6fr", render: v => <span style={{ fontSize: 13.5, fontWeight: 600, color: "#1a1f36" }}>{v}</span> },
               { key: "issueDate",label: "Issued",     width: "110px", muted: true },
               { key: "dueDate",  label: "Due",        width: "110px", render: (v, row) => (

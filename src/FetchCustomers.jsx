@@ -39,6 +39,130 @@ function FieldInput({ label, value, onChange, placeholder, type = "text", disabl
   );
 }
 
+// ─── PHONE INPUT ──────────────────────────────────────────────────────────────
+const DIAL_CODES = [
+  { code: "+234", country: "Nigeria",              flag: "🇳🇬" },
+  { code: "+1",   country: "United States/Canada", flag: "🇺🇸" },
+  { code: "+44",  country: "United Kingdom",        flag: "🇬🇧" },
+  { code: "+27",  country: "South Africa",          flag: "🇿🇦" },
+  { code: "+233", country: "Ghana",                 flag: "🇬🇭" },
+  { code: "+254", country: "Kenya",                 flag: "🇰🇪" },
+  { code: "+251", country: "Ethiopia",              flag: "🇪🇹" },
+  { code: "+255", country: "Tanzania",              flag: "🇹🇿" },
+  { code: "+256", country: "Uganda",                flag: "🇺🇬" },
+  { code: "+237", country: "Cameroon",              flag: "🇨🇲" },
+  { code: "+91",  country: "India",                 flag: "🇮🇳" },
+  { code: "+86",  country: "China",                 flag: "🇨🇳" },
+  { code: "+49",  country: "Germany",               flag: "🇩🇪" },
+  { code: "+33",  country: "France",                flag: "🇫🇷" },
+  { code: "+971", country: "UAE",                   flag: "🇦🇪" },
+  { code: "+966", country: "Saudi Arabia",          flag: "🇸🇦" },
+  { code: "+55",  country: "Brazil",                flag: "🇧🇷" },
+  { code: "+61",  country: "Australia",             flag: "🇦🇺" },
+];
+
+function formatPhoneNumber(digits) {
+  // Format: groups of 3-4 digits separated by spaces e.g. 801 234 5678
+  const d = digits.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3)  return d;
+  if (d.length <= 7)  return `${d.slice(0,3)} ${d.slice(3)}`;
+  if (d.length <= 10) return `${d.slice(0,3)} ${d.slice(3,6)} ${d.slice(6)}`;
+  return `${d.slice(0,3)} ${d.slice(3,7)} ${d.slice(7)}`;
+}
+
+function PhoneInput({ label, value, onChange }) {
+  // value is stored as full string e.g. "+234 801 234 5678"
+  // Parse out dial code and number on mount
+  const parseValue = (v) => {
+    if (!v) return { dialCode: "+234", number: "" };
+    const match = DIAL_CODES.find(d => v.startsWith(d.code));
+    if (match) return { dialCode: match.code, number: v.slice(match.code.length).trim() };
+    return { dialCode: "+234", number: v };
+  };
+
+  const parsed = parseValue(value);
+  const [dialCode, setDialCode] = useState(parsed.dialCode);
+  const [number, setNumber]     = useState(parsed.number);
+  const [open, setOpen]         = useState(false);
+  const [query, setQuery]       = useState("");
+
+  const selected = DIAL_CODES.find(d => d.code === dialCode) || DIAL_CODES[0];
+  const filtered = DIAL_CODES.filter(d =>
+    d.country.toLowerCase().includes(query.toLowerCase()) || d.code.includes(query)
+  );
+
+  const handleNumberChange = (raw) => {
+    const formatted = formatPhoneNumber(raw);
+    setNumber(formatted);
+    onChange(`${dialCode} ${formatted}`.trim());
+  };
+
+  const handleDialChange = (code) => {
+    setDialCode(code);
+    setOpen(false);
+    setQuery("");
+    onChange(`${code} ${number}`.trim());
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 5, position: "relative" }}>
+      {label && <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{label}</label>}
+      <div style={{ display: "flex", border: "1px solid #e5e7eb", borderRadius: 8, overflow: "visible", background: "#fff", position: "relative" }}>
+
+        {/* Dial code selector */}
+        <div
+          onClick={() => { setOpen(o => !o); setQuery(""); }}
+          style={{ display: "flex", alignItems: "center", gap: 5, padding: "9px 10px", borderRight: "1px solid #e5e7eb", background: "#f9fafb", cursor: "pointer", userSelect: "none", flexShrink: 0, borderRadius: "8px 0 0 8px" }}
+        >
+          <span style={{ fontSize: 16 }}>{selected.flag}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{selected.code}</span>
+          <span style={{ color: "#9ca3af", transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform .15s" }}>
+            <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </span>
+        </div>
+
+        {/* Number input */}
+        <input
+          type="tel"
+          value={number}
+          onChange={e => handleNumberChange(e.target.value)}
+          placeholder="801 234 5678"
+          style={{ flex: 1, padding: "9px 12px", border: "none", fontSize: 14, color: "#1a1f36", outline: "none", fontFamily: "inherit", background: "transparent", minWidth: 0 }}
+        />
+
+        {/* Dropdown */}
+        {open && (
+          <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, width: 260, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, boxShadow: "0 8px 28px rgba(0,0,0,.12)", zIndex: 400, overflow: "hidden" }}>
+            <div style={{ padding: "8px 10px", borderBottom: "1px solid #f0f0f0" }}>
+              <input
+                autoFocus
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search country or code..."
+                style={{ width: "100%", padding: "6px 10px", border: "1px solid #e5e7eb", borderRadius: 7, fontSize: 13, outline: "none", fontFamily: "inherit" }}
+              />
+            </div>
+            <div style={{ maxHeight: 200, overflowY: "auto" }}>
+              {filtered.length === 0 && <div style={{ padding: "12px", fontSize: 13, color: "#9ca3af", textAlign: "center" }}>No results</div>}
+              {filtered.map(d => (
+                <div key={d.code} onClick={() => handleDialChange(d.code)}
+                  style={{ padding: "9px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: d.code === dialCode ? "#fef2f0" : "transparent", fontSize: 13 }}
+                  onMouseEnter={e => { if (d.code !== dialCode) e.currentTarget.style.background = "#f9fafb"; }}
+                  onMouseLeave={e => { if (d.code !== dialCode) e.currentTarget.style.background = "transparent"; }}
+                >
+                  <span style={{ fontSize: 16 }}>{d.flag}</span>
+                  <span style={{ flex: 1, color: "#374151" }}>{d.country}</span>
+                  <span style={{ color: d.code === dialCode ? "#e8472a" : "#9ca3af", fontWeight: 600 }}>{d.code}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SectionHeader({ title, subtitle }) {
   return (
     <div style={{ borderBottom: "1px solid #f0f0f0", paddingBottom: 10, marginBottom: 2 }}>
@@ -177,7 +301,7 @@ function Drawer({ item, isNew, onClose, onSave }) {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <FieldInput label="Email Address" value={form.email} onChange={v => set("email", v)} placeholder="e.g. info@company.com" type="email" />
-            <FieldInput label="Contact Number" value={form.phone} onChange={v => set("phone", v)} placeholder="e.g. +234 801 234 5678" />
+            <PhoneInput label="Contact Number" value={form.phone} onChange={v => set("phone", v)} />
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -198,7 +322,14 @@ function Drawer({ item, isNew, onClose, onSave }) {
             <FieldInput label="State / Province" value={form.state} onChange={v => set("state", v)} placeholder="e.g. Lagos" />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <FieldInput label="Country" value={form.country} onChange={v => set("country", v)} placeholder="e.g. Nigeria" />
+            <CustomSelect
+              label="Country"
+              value={form.country}
+              onChange={v => set("country", v)}
+              placeholder="Select country"
+              searchable
+              options={["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"]}
+            />
             <FieldInput label="Post Code" value={form.postcode} onChange={v => set("postcode", v)} placeholder="e.g. 100001" />
           </div>
 

@@ -36,14 +36,136 @@ export function Toggle({ on, onChange }) {
  *  filters      – array of { type: "date"|"select", placeholder, options? }
  *  showExport   – bool (default true)
  */
-export function FilterBar({ search, onSearch, onRefresh, filters = [], showExport = true, placeholder = "Search..." }) {
+// ─── DATE PICKER ─────────────────────────────────────────────────────────────
+function DatePicker({ value, onChange, placeholder = "Select date" }) {
+  const [open, setOpen]   = useState(false);
+  const today             = new Date();
+  const parsed            = value ? new Date(value) : null;
+  const [view, setView]   = useState({ month: (parsed || today).getMonth(), year: (parsed || today).getFullYear() });
+
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DAYS   = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+
+  const firstDay = new Date(view.year, view.month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
+  // Offset so week starts Monday (0=Mon…6=Sun)
+  const offset = (firstDay + 6) % 7;
+  const cells  = Array.from({ length: offset + daysInMonth }, (_, i) => i < offset ? null : i - offset + 1);
+  // Pad to full weeks
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const prevMonth = () => setView(v => v.month === 0 ? { month: 11, year: v.year - 1 } : { month: v.month - 1, year: v.year });
+  const nextMonth = () => setView(v => v.month === 11 ? { month: 0, year: v.year + 1 } : { month: v.month + 1, year: v.year });
+
+  const select = (d) => {
+    if (!d) return;
+    const date = new Date(view.year, view.month, d);
+    onChange(date.toISOString().split("T")[0]);
+    setOpen(false);
+  };
+
+  const isSelected = (d) => {
+    if (!d || !parsed) return false;
+    return parsed.getFullYear() === view.year && parsed.getMonth() === view.month && parsed.getDate() === d;
+  };
+  const isToday = (d) => {
+    if (!d) return false;
+    return today.getFullYear() === view.year && today.getMonth() === view.month && today.getDate() === d;
+  };
+
+  const displayVal = parsed ? parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
+
   return (
-    <div style={{
-      display: "flex", alignItems: "center",
-      background: "#fff", border: "1px solid #e4e6ea", borderRadius: 10,
-      padding: "0 16px", marginBottom: 16, minHeight: 52, gap: 0,
-    }}>
-      {/* Search — takes all remaining space, no border of its own */}
+    <div style={{ position: "relative", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+      {/* Trigger */}
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 10px", height: 52, cursor: "pointer", userSelect: "none" }}
+      >
+        <svg width={14} height={14} fill="none" stroke={displayVal ? "#1a1f36" : "#9ca3af"} strokeWidth={1.8} viewBox="0 0 24 24" style={{ flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2"/><path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span style={{ fontSize: 13, fontWeight: displayVal ? 600 : 400, color: displayVal ? "#1a1f36" : "#6b7280", whiteSpace: "nowrap" }}>
+          {displayVal || placeholder}
+        </span>
+        {displayVal && (
+          <span onClick={e => { e.stopPropagation(); onChange(""); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", background: "#e5e7eb", cursor: "pointer", flexShrink: 0 }}>
+            <svg width={8} height={8} fill="none" stroke="#6b7280" strokeWidth={2.5} viewBox="0 0 12 12"><path strokeLinecap="round" d="M1 1l10 10M11 1L1 11"/></svg>
+          </span>
+        )}
+        <span style={{ color: "#9ca3af", transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform .15s" }}>{Ico.chevron}</span>
+      </div>
+
+      {/* Calendar dropdown */}
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, width: 272, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,.13)", zIndex: 400, padding: 14 }}>
+
+          {/* Month/year nav */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <button onClick={prevMonth} style={{ width: 28, height: 28, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+              <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: "#1a1f36" }}>{MONTHS[view.month]} {view.year}</span>
+            <button onClick={nextMonth} style={{ width: 28, height: 28, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+              <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+
+          {/* Day headers */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
+            {DAYS.map(d => <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: "#b0b7c3", padding: "2px 0" }}>{d}</div>)}
+          </div>
+
+          {/* Day cells */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px 0" }}>
+            {cells.map((d, idx) => (
+              <div key={idx} onClick={() => select(d)}
+                style={{
+                  textAlign: "center", padding: "5px 0", fontSize: 13, borderRadius: 6, cursor: d ? "pointer" : "default",
+                  background: isSelected(d) ? "#e8472a" : "transparent",
+                  color: isSelected(d) ? "#fff" : isToday(d) ? "#e8472a" : d ? "#374151" : "transparent",
+                  fontWeight: isSelected(d) || isToday(d) ? 700 : 400,
+                  outline: isToday(d) && !isSelected(d) ? "1px solid #e8472a" : "none",
+                }}
+                onMouseEnter={e => { if (d && !isSelected(d)) e.currentTarget.style.background = "#fef2f0"; }}
+                onMouseLeave={e => { if (d && !isSelected(d)) e.currentTarget.style.background = "transparent"; }}
+              >
+                {d || ""}
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, paddingTop: 10, borderTop: "1px solid #f0f0f0" }}>
+            <button onClick={() => { onChange(""); setOpen(false); }}
+              style={{ fontSize: 12.5, fontWeight: 600, color: "#6b7280", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "none"}>
+              Clear
+            </button>
+            <button onClick={() => { setView({ month: today.getMonth(), year: today.getFullYear() }); select(today.getDate()); }}
+              style={{ fontSize: 12.5, fontWeight: 700, color: "#e8472a", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
+              onMouseEnter={e => e.currentTarget.style.background = "#fef2f0"} onMouseLeave={e => e.currentTarget.style.background = "none"}>
+              Today
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function FilterBar({ search, onSearch, onRefresh, filters = [], showExport = true, placeholder = "Search..." }) {
+  const [openFilter, setOpenFilter] = useState(null);
+  const [filterValues, setFilterValues] = useState({});
+
+  const setVal = (i, v) => setFilterValues(prev => ({ ...prev, [i]: v === prev[i] ? "" : v }));
+
+  return (
+    <div
+      style={{ display: "flex", alignItems: "center", background: "#fff", border: "1px solid #e4e6ea", borderRadius: 10, padding: "0 16px", marginBottom: 16, minHeight: 52, gap: 0 }}
+      onClick={() => setOpenFilter(null)}
+    >
+      {/* Search */}
       <div style={{ position: "relative", flex: 1 }}>
         <span style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)" }}>{Ico.search}</span>
         <input
@@ -60,31 +182,62 @@ export function FilterBar({ search, onSearch, onRefresh, filters = [], showExpor
       {/* Dynamic filters */}
       {filters.map((f, i) => {
         if (f.type === "date") return (
-          <input
-            key={i} type="date"
-            style={{ padding: "0 12px", border: "none", height: 52, fontSize: 13, color: "#9ca3af", outline: "none", background: "transparent", fontFamily: "inherit", cursor: "pointer", flexShrink: 0 }}
-          />
+          <input key={i} type="date"
+            style={{ padding: "0 12px", border: "none", height: 52, fontSize: 13, color: "#9ca3af", outline: "none", background: "transparent", fontFamily: "inherit", cursor: "pointer", flexShrink: 0 }} />
         );
-        if (f.type === "select") return (
-          <div key={i} style={{ position: "relative", flexShrink: 0 }}>
-            <select style={{ padding: "0 28px 0 12px", border: "none", height: 52, fontSize: 13, color: "#6b7280", outline: "none", appearance: "none", background: "transparent", fontFamily: "inherit", cursor: "pointer" }}>
-              <option>{f.placeholder}</option>
-              {(f.options || []).map(o => <option key={o}>{o}</option>)}
-            </select>
-            <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#9ca3af" }}>{Ico.chevron}</span>
-          </div>
-        );
+
+        if (f.type === "select") {
+          const val = filterValues[i] || "";
+          const isOpen = openFilter === i;
+          return (
+            <div key={i} style={{ position: "relative", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+              {/* Trigger */}
+              <div
+                onClick={() => setOpenFilter(isOpen ? null : i)}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 10px", height: 52, cursor: "pointer", userSelect: "none" }}
+              >
+                <span style={{ fontSize: 13, fontWeight: val ? 600 : 400, color: val ? "#1a1f36" : "#6b7280", whiteSpace: "nowrap" }}>
+                  {val || f.placeholder}
+                </span>
+                {val && (
+                  <span
+                    onClick={e => { e.stopPropagation(); setVal(i, ""); }}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", background: "#e5e7eb", cursor: "pointer", flexShrink: 0 }}
+                  >
+                    <svg width={8} height={8} fill="none" stroke="#6b7280" strokeWidth={2.5} viewBox="0 0 12 12"><path strokeLinecap="round" d="M1 1l10 10M11 1L1 11"/></svg>
+                  </span>
+                )}
+                <span style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform .15s" }}>{Ico.chevron}</span>
+              </div>
+
+              {/* Dropdown */}
+              {isOpen && (
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, minWidth: 160, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, boxShadow: "0 8px 28px rgba(0,0,0,.12)", zIndex: 300, overflow: "hidden" }}>
+                  {(f.options || []).map(opt => (
+                    <div
+                      key={opt}
+                      onClick={() => { setVal(i, opt); setOpenFilter(null); }}
+                      style={{ padding: "10px 14px", fontSize: 13.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: val === opt ? "#e8472a" : "#374151", fontWeight: val === opt ? 600 : 400, background: val === opt ? "#fef2f0" : "transparent" }}
+                      onMouseEnter={e => { if (val !== opt) e.currentTarget.style.background = "#f9fafb"; }}
+                      onMouseLeave={e => { if (val !== opt) e.currentTarget.style.background = val === opt ? "#fef2f0" : "transparent"; }}
+                    >
+                      {val === opt && <svg width={13} height={13} fill="none" stroke="#e8472a" strokeWidth={2.5} viewBox="0 0 24 24" style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
+                      {opt}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }
         return null;
       })}
 
       {/* Refresh */}
-      <button
-        onClick={onRefresh}
-        title="Refresh"
+      <button onClick={onRefresh} title="Refresh"
         style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: "none", borderRadius: 6, background: "transparent", cursor: "pointer", color: "#9ca3af", flexShrink: 0, marginLeft: 4 }}
         onMouseEnter={e => e.currentTarget.style.color = "#374151"}
-        onMouseLeave={e => e.currentTarget.style.color = "#9ca3af"}
-      >
+        onMouseLeave={e => e.currentTarget.style.color = "#9ca3af"}>
         {Ico.refresh}
       </button>
 
@@ -93,8 +246,7 @@ export function FilterBar({ search, onSearch, onRefresh, filters = [], showExpor
         <button
           style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", border: "1px solid #e4e6ea", borderRadius: 7, background: "#fff", fontSize: 13, fontWeight: 500, color: "#374151", cursor: "pointer", flexShrink: 0, marginLeft: 6 }}
           onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
-          onMouseLeave={e => e.currentTarget.style.background = "#fff"}
-        >
+          onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
           {Ico.export}&nbsp;Export
         </button>
       )}
@@ -118,6 +270,7 @@ export function DataTable({
   columns = [],
   rows = [],
   rowActions = [],
+  rowStyle,
   emptyTitle = "No records found",
   emptySubtitle = "Try adjusting your filters or add a new entry to get started.",
   onClearFilter,
@@ -130,7 +283,6 @@ export function DataTable({
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const paginated = rows.slice((page - 1) * pageSize, page * pageSize);
 
-  // Build gridTemplateColumns from column widths
   const gridCols = columns.map(c => c.width || "1fr").join(" ");
 
   return (
@@ -150,7 +302,6 @@ export function DataTable({
       {/* ── BODY ── */}
       <div style={{ flex: 1 }}>
         {paginated.length === 0 ? (
-          // Empty state
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "90px 20px", gap: 12 }}>
             <div style={{ width: 68, height: 68, borderRadius: "50%", background: "#f0f2f5", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {Ico.emptyDoc}
@@ -164,52 +315,54 @@ export function DataTable({
             )}
           </div>
         ) : (
-          paginated.map((row, idx) => (
-            <div
-              key={row.id ?? idx}
-              style={{ display: "grid", gridTemplateColumns: gridCols, padding: "14px 24px", borderBottom: idx < paginated.length - 1 ? "1px solid #f5f5f7" : "none", alignItems: "center", transition: "background .12s" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#fafafa"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >
-              {columns.map(col => {
-                // Last column is action menu
-                if (col.key === "__action") {
+          paginated.map((row, idx) => {
+            const extraStyle = rowStyle ? rowStyle(row) : {};
+            return (
+              <div
+                key={row.id ?? idx}
+                style={{ display: "grid", gridTemplateColumns: gridCols, padding: "14px 24px", borderBottom: idx < paginated.length - 1 ? "1px solid #f5f5f7" : "none", alignItems: "center", transition: "background .12s", ...extraStyle }}
+                onMouseEnter={e => e.currentTarget.style.background = extraStyle.background ? extraStyle.background : "#fafafa"}
+                onMouseLeave={e => e.currentTarget.style.background = extraStyle.background || "transparent"}
+              >
+                {columns.map(col => {
+                  if (col.key === "__action") {
+                    const visibleActions = rowActions.filter(m => !m.hidden || !m.hidden(row));
+                    return (
+                      <div key="__action" style={{ position: "relative" }} onClick={e => { e.stopPropagation(); setOpenMenu(openMenu === (row.id ?? idx) ? null : (row.id ?? idx)); }}>
+                        <button style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 4, borderRadius: 6, display: "flex" }}>
+                          {Ico.dots}
+                        </button>
+                        {openMenu === (row.id ?? idx) && visibleActions.length > 0 && (
+                          <div style={{ position: "absolute", right: 0, top: 28, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, boxShadow: "0 8px 28px rgba(0,0,0,.12)", zIndex: 10, minWidth: 130, overflow: "hidden" }}>
+                            {visibleActions.map(m => (
+                              <button
+                                key={m.label}
+                                onClick={() => { m.action(row); setOpenMenu(null); }}
+                                style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, fontWeight: 500, color: m.danger ? "#e8472a" : "#374151", cursor: "pointer" }}
+                                onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+                                onMouseLeave={e => e.currentTarget.style.background = "none"}
+                              >
+                                {m.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
                   return (
-                    <div key="__action" style={{ position: "relative" }} onClick={e => { e.stopPropagation(); setOpenMenu(openMenu === (row.id ?? idx) ? null : (row.id ?? idx)); }}>
-                      <button style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 4, borderRadius: 6, display: "flex" }}>
-                        {Ico.dots}
-                      </button>
-                      {openMenu === (row.id ?? idx) && rowActions.length > 0 && (
-                        <div style={{ position: "absolute", right: 0, top: 28, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, boxShadow: "0 8px 28px rgba(0,0,0,.12)", zIndex: 10, minWidth: 130, overflow: "hidden" }}>
-                          {rowActions.map(m => (
-                            <button
-                              key={m.label}
-                              onClick={() => { m.action(row); setOpenMenu(null); }}
-                              style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, fontWeight: 500, color: m.danger ? "#e8472a" : "#374151", cursor: "pointer" }}
-                              onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
-                              onMouseLeave={e => e.currentTarget.style.background = "none"}
-                            >
-                              {m.label}
-                            </button>
-                          ))}
-                        </div>
+                    <div key={col.key}>
+                      {col.render ? col.render(row[col.key], row) : (
+                        <span style={{ fontSize: 13.5, color: col.muted ? "#9ca3af" : "#374151", fontWeight: col.bold ? 600 : 400 }}>
+                          {row[col.key] ?? "—"}
+                        </span>
                       )}
                     </div>
-                  );
-                }
-                // Custom render or default
-                return (
-                  <div key={col.key}>
-                    {col.render ? col.render(row[col.key], row) : (
-                      <span style={{ fontSize: 13.5, color: col.muted ? "#9ca3af" : "#374151", fontWeight: col.bold ? 600 : 400 }}>
-                        {row[col.key] ?? "—"}
-                      </span>
-                    )}
-                  </div>
                 );
               })}
             </div>
-          ))
+          );
+          })
         )}
       </div>
 
@@ -264,10 +417,16 @@ const NAV_SECTIONS = [
   {
     label: "MAIN",
     items: [
-      { label: "Dashboard",          icon: "dashboard", page: null       },
-      { label: "Sales",              icon: "sales",     page: null       },
-      { label: "Customers",          icon: "customers", page: "customers"  },
-      { label: "Verify Invoice",     icon: "invoice",   page: null       },
+      { label: "Dashboard",          icon: "dashboard", page: null        },
+      {
+        label: "Sales", icon: "sales", page: null,
+        children: [
+          { label: "Invoices",       icon: "invoice",   page: "invoices"  },
+          { label: "Collections",    icon: "payments",  page: null        },
+        ],
+      },
+      { label: "Customers",          icon: "customers", page: "customers" },
+      { label: "Verify Invoice",     icon: "invoice",   page: null        },
     ],
   },
   {

@@ -181,11 +181,12 @@ export default function FetchInvoices({ navigate }) {
             ]}
             rows={filtered}
             rowActions={[
-              { label: "View / Edit", action: row => navigate("invoice-builder", { invoice: row }) },
-              { label: "Mark as Sent", action: row => handleStatusChange(row.id, "Sent"), hidden: row => row.status !== "Draft" },
-              { label: "Mark as Paid", action: row => handleStatusChange(row.id, "Paid"), hidden: row => ["Paid","Cancelled","Draft"].includes(row.status) },
-              { label: "Cancel",       action: row => handleStatusChange(row.id, "Cancelled"), hidden: row => ["Paid","Cancelled"].includes(row.status), danger: true },
-              { label: "Delete",       action: row => handleDelete(row.id), danger: true },
+              { label: "View / Edit",    action: row => navigate("invoice-builder", { invoice: row }) },
+              { label: "Record Payment", action: row => navigate("collections", { invoice: row }), hidden: row => !["Sent","Partially Paid","Overdue"].includes(row.status) },
+              { label: "Mark as Sent",   action: row => handleStatusChange(row.id, "Sent"), hidden: row => row.status !== "Draft" },
+              { label: "Mark as Paid",   action: row => handleStatusChange(row.id, "Paid"), hidden: row => ["Paid","Cancelled","Draft"].includes(row.status) },
+              { label: "Cancel",         action: row => handleStatusChange(row.id, "Cancelled"), hidden: row => ["Paid","Cancelled"].includes(row.status), danger: true },
+              { label: "Delete",         action: row => handleDelete(row.id), danger: true },
             ]}
             rowStyle={row => row.status === "Overdue" ? { background: "#fff9f9" } : {}}
             emptyTitle="No invoices found"

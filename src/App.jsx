@@ -4,12 +4,12 @@ import FetchProducts        from "./FetchProducts";
 import FetchCustomers       from "./FetchCustomers";
 import FetchInvoices        from "./FetchInvoices";
 import FetchInvoiceBuilder  from "./FetchInvoiceBuilder";
+import FetchCollections     from "./FetchCollections";
 
 export default function App() {
   const [page, setPage]         = useState("billing");
   const [pageData, setPageData] = useState(null);
 
-  // navigate(page) or navigate(page, { invoice: row })
   const navigate = (target, data = null) => {
     setPage(target);
     setPageData(data);
@@ -20,6 +20,7 @@ export default function App() {
   if (page === "customers")       return <FetchCustomers      navigate={navigate} />;
   if (page === "invoices")        return <FetchInvoices       navigate={navigate} />;
   if (page === "invoice-builder") return <FetchInvoiceBuilder navigate={navigate} invoiceData={pageData?.invoice || null} />;
+  if (page === "collections")     return <FetchCollections    navigate={navigate} prefilledInvoice={pageData?.invoice || null} />;
 
   return null;
 }

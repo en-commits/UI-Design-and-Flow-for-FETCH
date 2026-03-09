@@ -36,116 +36,196 @@ export function Toggle({ on, onChange }) {
  *  filters      – array of { type: "date"|"select", placeholder, options? }
  *  showExport   – bool (default true)
  */
-// ─── DATE PICKER ─────────────────────────────────────────────────────────────
-function DatePicker({ value, onChange, placeholder = "Select date" }) {
-  const [open, setOpen]   = useState(false);
-  const today             = new Date();
-  const parsed            = value ? new Date(value) : null;
-  const [view, setView]   = useState({ month: (parsed || today).getMonth(), year: (parsed || today).getFullYear() });
+// ─── DATE RANGE PICKER ───────────────────────────────────────────────────────
+function DateRangePicker({ from, to, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [picking, setPicking] = useState("from"); // "from" | "to"
+  const todayD = new Date();
 
-  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const initView = (dateStr) => {
+    const d = dateStr ? new Date(dateStr) : todayD;
+    return { month: d.getMonth(), year: d.getFullYear() };
+  };
+  const [viewFrom, setViewFrom] = useState(() => initView(from));
+  // "to" calendar always shows next month relative to from view
+  const viewTo = viewFrom.month === 11
+    ? { month: 0, year: viewFrom.year + 1 }
+    : { month: viewFrom.month + 1, year: viewFrom.year };
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const DAYS   = ["Mo","Tu","We","Th","Fr","Sa","Su"];
 
-  const firstDay = new Date(view.year, view.month, 1).getDay(); // 0=Sun
-  const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-  // Offset so week starts Monday (0=Mon…6=Sun)
-  const offset = (firstDay + 6) % 7;
-  const cells  = Array.from({ length: offset + daysInMonth }, (_, i) => i < offset ? null : i - offset + 1);
-  // Pad to full weeks
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  const prevMonth = () => setView(v => v.month === 0 ? { month: 11, year: v.year - 1 } : { month: v.month - 1, year: v.year });
-  const nextMonth = () => setView(v => v.month === 11 ? { month: 0, year: v.year + 1 } : { month: v.month + 1, year: v.year });
-
-  const select = (d) => {
-    if (!d) return;
-    const date = new Date(view.year, view.month, d);
-    onChange(date.toISOString().split("T")[0]);
-    setOpen(false);
+  const buildCells = (year, month) => {
+    const firstDay    = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const offset      = (firstDay + 6) % 7;
+    const cells       = Array.from({ length: offset + daysInMonth }, (_, i) => i < offset ? null : i - offset + 1);
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
   };
 
-  const isSelected = (d) => {
-    if (!d || !parsed) return false;
-    return parsed.getFullYear() === view.year && parsed.getMonth() === view.month && parsed.getDate() === d;
-  };
-  const isToday = (d) => {
-    if (!d) return false;
-    return today.getFullYear() === view.year && today.getMonth() === view.month && today.getDate() === d;
+  const toISO = (year, month, day) => {
+    const m = String(month + 1).padStart(2, "0");
+    const d = String(day).padStart(2, "0");
+    return `${year}-${m}-${d}`;
   };
 
-  const displayVal = parsed ? parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
+  const handleDayClick = (year, month, day) => {
+    if (!day) return;
+    const iso = toISO(year, month, day);
+    if (picking === "from") {
+      onChange(iso, to && iso > to ? "" : to);
+      setPicking("to");
+    } else {
+      if (from && iso < from) {
+        onChange(iso, "");
+        setPicking("to");
+      } else {
+        onChange(from, iso);
+        setPicking("from");
+        setOpen(false);
+      }
+    }
+  };
+
+  const dayState = (year, month, day) => {
+    if (!day) return "empty";
+    const iso = toISO(year, month, day);
+    const isToday = iso === todayD.toISOString().split("T")[0];
+    const isFrom  = iso === from;
+    const isTo    = iso === to;
+    const inRange = from && to && iso > from && iso < to;
+    return { iso, isToday, isFrom, isTo, inRange };
+  };
+
+  const fmtDisp = iso => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  const hasRange = from || to;
+  const triggerLabel = hasRange
+    ? `${fmtDisp(from) || "Start"} → ${fmtDisp(to) || "End"}`
+    : "Date range";
+
+  const CalMonth = ({ year, month, isRight }) => {
+    const cells = buildCells(year, month);
+    const prevM = () => setViewFrom(v => v.month === 0 ? { month: 11, year: v.year - 1 } : { month: v.month - 1, year: v.year });
+    const nextM = () => setViewFrom(v => v.month === 11 ? { month: 0, year: v.year + 1 } : { month: v.month + 1, year: v.year });
+
+    return (
+      <div style={{ width: 210 }}>
+        {/* Month nav */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          {!isRight ? (
+            <button onClick={prevM} style={{ width: 26, height: 26, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+              <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+          ) : <div style={{ width: 26 }} />}
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1f36" }}>{MONTHS[month]} {year}</span>
+          {isRight ? (
+            <button onClick={nextM} style={{ width: 26, height: 26, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+              <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          ) : <div style={{ width: 26 }} />}
+        </div>
+        {/* Day headers */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 3 }}>
+          {DAYS.map(d => <div key={d} style={{ textAlign: "center", fontSize: 10.5, fontWeight: 700, color: "#b0b7c3" }}>{d}</div>)}
+        </div>
+        {/* Day cells */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px 0" }}>
+          {cells.map((day, idx) => {
+            const s = dayState(year, month, day);
+            if (s === "empty") return <div key={idx} />;
+            const { isFrom, isTo, inRange, isToday } = s;
+            const isEndpoint = isFrom || isTo;
+            return (
+              <div key={idx} onClick={() => handleDayClick(year, month, day)}
+                style={{
+                  position: "relative", textAlign: "center", padding: "5px 0", fontSize: 12.5, cursor: "pointer", borderRadius: 0,
+                  background: inRange ? "#fde8e4" : "transparent",
+                  borderRadius: isFrom ? "6px 0 0 6px" : isTo ? "0 6px 6px 0" : inRange ? 0 : 6,
+                }}>
+                <span style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  width: 26, height: 26, borderRadius: 6,
+                  background: isEndpoint ? "#e8472a" : "transparent",
+                  color: isEndpoint ? "#fff" : isToday ? "#e8472a" : "#374151",
+                  fontWeight: isEndpoint || isToday ? 700 : 400,
+                  outline: isToday && !isEndpoint ? "1.5px solid #e8472a" : "none",
+                  outlineOffset: "-1px",
+                }}
+                  onMouseEnter={e => { if (!isEndpoint) e.currentTarget.style.background = "#fef2f0"; }}
+                  onMouseLeave={e => { if (!isEndpoint) e.currentTarget.style.background = "transparent"; }}>
+                  {day}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div style={{ position: "relative", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
       {/* Trigger */}
-      <div
-        onClick={() => setOpen(o => !o)}
-        style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 10px", height: 52, cursor: "pointer", userSelect: "none" }}
-      >
-        <svg width={14} height={14} fill="none" stroke={displayVal ? "#1a1f36" : "#9ca3af"} strokeWidth={1.8} viewBox="0 0 24 24" style={{ flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2"/><path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
-        <span style={{ fontSize: 13, fontWeight: displayVal ? 600 : 400, color: displayVal ? "#1a1f36" : "#6b7280", whiteSpace: "nowrap" }}>
-          {displayVal || placeholder}
+      <div onClick={() => { setOpen(o => !o); setPicking("from"); }}
+        style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 10px", height: 52, cursor: "pointer", userSelect: "none" }}>
+        <svg width={14} height={14} fill="none" stroke={hasRange ? "#1a1f36" : "#9ca3af"} strokeWidth={1.8} viewBox="0 0 24 24" style={{ flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2"/><path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span style={{ fontSize: 13, fontWeight: hasRange ? 600 : 400, color: hasRange ? "#1a1f36" : "#6b7280", whiteSpace: "nowrap" }}>
+          {triggerLabel}
         </span>
-        {displayVal && (
-          <span onClick={e => { e.stopPropagation(); onChange(""); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", background: "#e5e7eb", cursor: "pointer", flexShrink: 0 }}>
+        {hasRange && (
+          <span onClick={e => { e.stopPropagation(); onChange("", ""); setOpen(false); }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", background: "#e5e7eb", cursor: "pointer", flexShrink: 0 }}>
             <svg width={8} height={8} fill="none" stroke="#6b7280" strokeWidth={2.5} viewBox="0 0 12 12"><path strokeLinecap="round" d="M1 1l10 10M11 1L1 11"/></svg>
           </span>
         )}
-        <span style={{ color: "#9ca3af", transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform .15s" }}>{Ico.chevron}</span>
+        <span style={{ color: "#9ca3af", transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}>{Ico.chevron}</span>
       </div>
 
-      {/* Calendar dropdown */}
+      {/* Dropdown */}
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, width: 272, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,.13)", zIndex: 400, padding: 14 }}>
-
-          {/* Month/year nav */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <button onClick={prevMonth} style={{ width: 28, height: 28, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
-              <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            </button>
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: "#1a1f36" }}>{MONTHS[view.month]} {view.year}</span>
-            <button onClick={nextMonth} style={{ width: 28, height: 28, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
-              <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </button>
-          </div>
-
-          {/* Day headers */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
-            {DAYS.map(d => <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: "#b0b7c3", padding: "2px 0" }}>{d}</div>)}
-          </div>
-
-          {/* Day cells */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px 0" }}>
-            {cells.map((d, idx) => (
-              <div key={idx} onClick={() => select(d)}
-                style={{
-                  textAlign: "center", padding: "5px 0", fontSize: 13, borderRadius: 6, cursor: d ? "pointer" : "default",
-                  background: isSelected(d) ? "#e8472a" : "transparent",
-                  color: isSelected(d) ? "#fff" : isToday(d) ? "#e8472a" : d ? "#374151" : "transparent",
-                  fontWeight: isSelected(d) || isToday(d) ? 700 : 400,
-                  outline: isToday(d) && !isSelected(d) ? "1px solid #e8472a" : "none",
-                }}
-                onMouseEnter={e => { if (d && !isSelected(d)) e.currentTarget.style.background = "#fef2f0"; }}
-                onMouseLeave={e => { if (d && !isSelected(d)) e.currentTarget.style.background = "transparent"; }}
-              >
-                {d || ""}
-              </div>
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, left: "auto", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,.13)", zIndex: 400, padding: 14, width: 472 }}>
+          {/* Picking hint */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 12, background: "#f4f5f7", borderRadius: 8, padding: 4 }}>
+            {["from","to"].map(p => (
+              <button key={p} onClick={() => setPicking(p)}
+                style={{ flex: 1, padding: "6px 10px", borderRadius: 6, border: "none", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+                  background: picking === p ? "#e8472a" : "transparent",
+                  color: picking === p ? "#fff" : "#9ca3af",
+                  transition: "background .15s, color .15s" }}>
+                {p === "from" ? `From: ${fmtDisp(from) || "—"}` : `To: ${fmtDisp(to) || "—"}`}
+              </button>
             ))}
           </div>
-
+          {/* Two calendars */}
+          <div style={{ display: "flex", gap: 20 }}>
+            <CalMonth year={viewFrom.year} month={viewFrom.month} isRight={false} />
+            <div style={{ width: 1, background: "#f0f0f0" }} />
+            <CalMonth year={viewTo.year} month={viewTo.month} isRight={true} />
+          </div>
           {/* Footer */}
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, paddingTop: 10, borderTop: "1px solid #f0f0f0" }}>
-            <button onClick={() => { onChange(""); setOpen(false); }}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid #f0f0f0" }}>
+            <button onClick={() => { onChange("", ""); setOpen(false); }}
               style={{ fontSize: 12.5, fontWeight: 600, color: "#6b7280", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
               onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "none"}>
               Clear
             </button>
-            <button onClick={() => { setView({ month: today.getMonth(), year: today.getFullYear() }); select(today.getDate()); }}
-              style={{ fontSize: 12.5, fontWeight: 700, color: "#e8472a", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
+            {from && to && (
+              <span style={{ fontSize: 12, color: "#9ca3af" }}>
+                {fmtDisp(from)} → {fmtDisp(to)}
+              </span>
+            )}
+            <button onClick={() => setOpen(false)}
+              style={{ fontSize: 12.5, fontWeight: 700, color: "#e8472a", background: "none", border: "none", cursor: "pointer", padding: "4px 12px", borderRadius: 6 }}
               onMouseEnter={e => e.currentTarget.style.background = "#fef2f0"} onMouseLeave={e => e.currentTarget.style.background = "none"}>
-              Today
+              Apply
             </button>
           </div>
         </div>
@@ -157,8 +237,10 @@ function DatePicker({ value, onChange, placeholder = "Select date" }) {
 export function FilterBar({ search, onSearch, onRefresh, filters = [], showExport = true, placeholder = "Search..." }) {
   const [openFilter, setOpenFilter] = useState(null);
   const [filterValues, setFilterValues] = useState({});
+  const [dateRanges, setDateRanges] = useState({}); // { [filterIndex]: { from, to } }
 
   const setVal = (i, v) => setFilterValues(prev => ({ ...prev, [i]: v === prev[i] ? "" : v }));
+  const setRange = (i, from, to) => setDateRanges(prev => ({ ...prev, [i]: { from, to } }));
 
   return (
     <div
@@ -181,10 +263,14 @@ export function FilterBar({ search, onSearch, onRefresh, filters = [], showExpor
 
       {/* Dynamic filters */}
       {filters.map((f, i) => {
-        if (f.type === "date") return (
-          <input key={i} type="date"
-            style={{ padding: "0 12px", border: "none", height: 52, fontSize: 13, color: "#9ca3af", outline: "none", background: "transparent", fontFamily: "inherit", cursor: "pointer", flexShrink: 0 }} />
-        );
+        if (f.type === "date") {
+          const range = dateRanges[i] || { from: "", to: "" };
+          return (
+            <DateRangePicker key={i}
+              from={range.from} to={range.to}
+              onChange={(from, to) => setRange(i, from, to)} />
+          );
+        }
 
         if (f.type === "select") {
           const val = filterValues[i] || "";
@@ -422,7 +508,7 @@ const NAV_SECTIONS = [
         label: "Sales", icon: "sales", page: null,
         children: [
           { label: "Invoices",       icon: "invoice",   page: "invoices"  },
-          { label: "Collections",    icon: "payments",  page: null        },
+          { label: "Collections",    icon: "payments",  page: "collections" },
         ],
       },
       { label: "Customers",          icon: "customers", page: "customers" },

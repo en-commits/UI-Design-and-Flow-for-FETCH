@@ -13,6 +13,16 @@ export const Ico = {
   bell:      <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>,
   close:     <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M6 18L18 6M6 6l12 12"/></svg>,
   box:       <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>,
+  send:      <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>,
+  clock:     <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path strokeLinecap="round" d="M12 7v5l3 3"/></svg>,
+  eye:       <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  eyeOff:    <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"/></svg>,
+  key:       <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>,
+  link:      <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path strokeLinecap="round" strokeLinejoin="round" d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>,
+  unlink:    <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path strokeLinecap="round" strokeLinejoin="round" d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22" strokeLinecap="round"/></svg>,
+  info:      <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M12 16v-4M12 8h.01"/></svg>,
+  check:     <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>,
+  star:      <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>,
 };
 
 // ─── SHARED TOGGLE ────────────────────────────────────────────────────────────
@@ -119,16 +129,16 @@ function DateRangePicker({ from, to, onChange }) {
         {/* Month nav */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           {!isRight ? (
-            <button onClick={prevM} style={{ width: 26, height: 26, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280" }}
+            <button onClick={prevM} style={{ width: 26, height: 26, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
-              <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M15 19l-7-7 7-7"/></svg>
+              <svg width={13} height={13} fill="none" stroke="#6b7280" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M15 19l-7-7 7-7"/></svg>
             </button>
           ) : <div style={{ width: 26 }} />}
           <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1f36" }}>{MONTHS[month]} {year}</span>
           {isRight ? (
-            <button onClick={nextM} style={{ width: 26, height: 26, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280" }}
+            <button onClick={nextM} style={{ width: 26, height: 26, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
               onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
-              <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M9 5l7 7-7 7"/></svg>
+              <svg width={13} height={13} fill="none" stroke="#6b7280" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M9 5l7 7-7 7"/></svg>
             </button>
           ) : <div style={{ width: 26 }} />}
         </div>
@@ -461,16 +471,16 @@ export function DataTable({
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            style={{ width: 28, height: 28, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: page === 1 ? "not-allowed" : "pointer", color: page === 1 ? "#d1d5db" : "#374151", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ width: 28, height: 28, border: "1px solid #e5e7eb", borderRadius: 6, background: page === 1 ? "#f4f5f7" : "#fff", cursor: page === 1 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            {Ico.chevLeft}
+            <svg width={14} height={14} fill="none" stroke={page === 1 ? "#c0c6d4" : "#374151"} strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M15 19l-7-7 7-7"/></svg>
           </button>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            style={{ width: 28, height: 28, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: page === totalPages ? "not-allowed" : "pointer", color: page === totalPages ? "#d1d5db" : "#374151", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ width: 28, height: 28, border: "1px solid #e5e7eb", borderRadius: 6, background: page === totalPages ? "#f4f5f7" : "#fff", cursor: page === totalPages ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            {Ico.chevRight}
+            <svg width={14} height={14} fill="none" stroke={page === totalPages ? "#c0c6d4" : "#374151"} strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M9 5l7 7-7 7"/></svg>
           </button>
         </div>
       </div>
@@ -495,10 +505,10 @@ const NAV_ICONS = {
   payments:    <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path strokeLinecap="round" d="M2 10h20"/></svg>,
   settings:    <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>,
   subscription:<svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>,
-  integrations:<svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>,
-  erp:         <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path strokeLinecap="round" d="M8 21h8M12 17v4"/><path strokeLinecap="round" d="M6 8h4M6 11h6M14 8h4"/></svg>,
   logout:      <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>,
   chevDown:    <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M19 9l-7 7-7-7"/></svg>,
+  erp:         <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>,
+  gateway:     <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>,
 };
 
 const NAV_SECTIONS = [
@@ -514,7 +524,6 @@ const NAV_SECTIONS = [
         ],
       },
       { label: "Customers",          icon: "customers", page: "customers" },
-      { label: "Verify Invoice",     icon: "invoice",   page: null        },
     ],
   },
   {
@@ -524,37 +533,22 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    label: "SUPPORT",
+    label: "INTEGRATIONS",
     items: [
-      { label: "Tickets",            icon: "tickets",   page: null },
+      { label: "ERP Connection",     icon: "erp",       page: "connectors"       },
+      { label: "Payment Gateways",   icon: "gateway",   page: "payment-gateways" },
     ],
   },
   {
-    label: "INTEGRATIONS",
+    label: "SUPPORT",
     items: [
-      {
-        label: "Payment Gateways", icon: "payments", page: null,
-        children: [
-          { label: "Gateways",       icon: "payments",      page: "payment-gateways" },
-        ],
-      },
-      {
-        label: "ERP & Compliance",  icon: "erp", page: null,
-        children: [
-          { label: "ERP Connectors", icon: "integrations",  page: null },
-        ],
-      },
+      { label: "Tickets",            icon: "tickets",   page: "tickets" },
     ],
   },
   {
     label: "ACCOUNT",
     items: [
-      {
-        label: "Settings", icon: "settings", page: null,
-        children: [
-          { label: "Subscription",   icon: "subscription", page: "billing" },
-        ],
-      },
+      { label: "Settings", icon: "settings", page: "settings" },
     ],
   },
 ];
@@ -611,6 +605,81 @@ function NavItem({ item, activePage, navigate, depth = 0 }) {
         </div>
       )}
     </>
+  );
+}
+
+// ─── SINGLE DATE PICKER ───────────────────────────────────────────────────────
+export function SingleDatePicker({ label, value, onChange, placeholder = "Select date" }) {
+  const [open, setOpen]   = useState(false);
+  const [view, setView]   = useState("days");
+  const today             = new Date();
+  const parsed            = value ? new Date(value) : null;
+  const [cursor, setCursor] = useState(parsed || today);
+
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const dayNames   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+  const year  = cursor.getFullYear();
+  const month = cursor.getMonth();
+
+  const firstDay  = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = Array(firstDay).fill(null).concat(Array.from({ length: daysInMonth }, (_, i) => i + 1));
+
+  const select = (day) => {
+    const d = new Date(year, month, day);
+    const iso = d.toISOString().split("T")[0];
+    onChange(iso);
+    setOpen(false);
+  };
+
+  const prevMonth = () => setCursor(new Date(year, month - 1, 1));
+  const nextMonth = () => setCursor(new Date(year, month + 1, 1));
+
+  const isSelected = (day) => {
+    if (!parsed || !day) return false;
+    return parsed.getFullYear() === year && parsed.getMonth() === month && parsed.getDate() === day;
+  };
+  const isToday = (day) => day && today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+
+  const displayValue = parsed ? parsed.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 5, position: "relative" }}>
+      {label && <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{label}</label>}
+      <div onClick={() => setOpen(o => !o)}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 14, color: displayValue ? "#1a1f36" : "#9ca3af", background: "#fff", cursor: "pointer", userSelect: "none" }}>
+        <span>{displayValue || placeholder}</span>
+        <svg width={14} height={14} fill="none" stroke="#9ca3af" strokeWidth={2} viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+      </div>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
+          <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 6, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,.12)", zIndex: 100, padding: "14px", width: 260 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <button onClick={prevMonth} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", padding: "4px 8px", borderRadius: 6, fontSize: 16 }}>‹</button>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: "#1a1f36" }}>{monthNames[month]} {year}</span>
+              <button onClick={nextMonth} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", padding: "4px 8px", borderRadius: 6, fontSize: 16 }}>›</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 6 }}>
+              {dayNames.map(d => <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: 600, color: "#9ca3af", padding: "4px 0" }}>{d}</div>)}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>
+              {cells.map((day, i) => (
+                <button key={i} onClick={() => day && select(day)} disabled={!day}
+                  style={{ padding: "6px 0", border: "none", borderRadius: 6, cursor: day ? "pointer" : "default", fontSize: 13, fontWeight: isSelected(day) ? 700 : 400, textAlign: "center",
+                    background: isSelected(day) ? "#e8472a" : "transparent",
+                    color: isSelected(day) ? "#fff" : isToday(day) ? "#e8472a" : day ? "#1a1f36" : "transparent",
+                    outline: isToday(day) && !isSelected(day) ? "1px solid #e8472a" : "none",
+                  }}>
+                  {day || ""}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

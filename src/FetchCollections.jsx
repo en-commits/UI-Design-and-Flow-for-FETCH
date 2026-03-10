@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DataTable, FilterBar, CustomSelect, Ico as SharedIco, Sidebar } from "./FetchShared";
+import { DataTable, FilterBar, CustomSelect, SingleDatePicker, Ico as SharedIco, Sidebar } from "./FetchShared";
 
 // ─── SAMPLE DATA ──────────────────────────────────────────────────────────────
 const INITIAL_COLLECTIONS = [
@@ -497,9 +497,12 @@ function RecordPaymentDrawer({ onClose, onSave, collections, prefilledInvoice })
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              <label style={{ fontSize: 12.5, fontWeight: 600, color: "#374151" }}>Payment Date</label>
-              <input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={inp} />
+            <div>
+              <SingleDatePicker
+                label="Payment Date"
+                value={form.date}
+                onChange={v => set("date", v)}
+              />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12.5, fontWeight: 600, color: "#374151" }}>

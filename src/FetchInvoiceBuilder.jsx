@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Ico as SharedIco, CustomSelect } from "./FetchShared";
+import { Ico as SharedIco, CustomSelect, SingleDatePicker } from "./FetchShared";
 
 // ─── SAMPLE CATALOGUE & CUSTOMERS ────────────────────────────────────────────
 // In production these would come from shared state / API
@@ -235,6 +235,9 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
   const [deposit, setDeposit]            = useState(0);
   const [notes, setNotes]                = useState("");
   const [terms, setTerms]                = useState("Payment is due within the agreed payment terms. Late payments may attract interest.");
+  const [disputed, setDisputed]          = useState(isEdit ? (invoiceData?.disputed || false) : false);
+  const [disputeNotes, setDisputeNotes]  = useState(isEdit ? (invoiceData?.disputeNotes || "") : "");
+  const [disputeOpen, setDisputeOpen]    = useState(false);
   const [saved, setSaved]                = useState(false);
   const [irn, setIrn]                    = useState(() => {
     if (!isEdit) return null;
@@ -245,7 +248,10 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
     return null;
   });
   const [validating, setValidating]      = useState(false);
+  const [validationFailed, setValidationFailed] = useState(false);
+  const [failureReason, setFailureReason]  = useState("");
   const [copied, setCopied]              = useState(false);
+  const [simResult, setSimResult]        = useState("pass"); // "pass" | "fail" — demo toggle
 
   // Recalculate due date when terms change
   useEffect(() => {
@@ -274,17 +280,33 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
   const removeLine = id => setLines(ls => ls.filter(l => l.id !== id));
   const addLine    = () => setLines(ls => [...ls, blankLine()]);
 
+  const FIRS_ERRORS = [
+    "Duplicate invoice number detected in FIRS database.",
+    "Taxpayer TIN could not be verified. Ensure customer TIN is correct.",
+    "Invoice total does not match declared line item values.",
+    "FIRS service is temporarily unavailable. Please retry.",
+    "Business registration number not found in FIRS records.",
+  ];
+
   const handleSave = (newStatus = status) => {
     if (newStatus === "Sent" && !irn) {
-      // Simulate FIRS validation — generate IRN after short delay
       setValidating(true);
+      setValidationFailed(false);
+      setFailureReason("");
       setTimeout(() => {
-        const generated = generateIRN(invoiceNumber);
-        setIrn(generated);
-        setValidating(false);
-        setStatus("Sent");
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        const failed = simResult === "fail";
+        if (failed) {
+          setValidating(false);
+          setValidationFailed(true);
+          setFailureReason(FIRS_ERRORS[Math.floor(Math.random() * FIRS_ERRORS.length)]);
+        } else {
+          const generated = generateIRN(invoiceNumber);
+          setIrn(generated);
+          setValidating(false);
+          setStatus("Sent");
+          setSaved(true);
+          setTimeout(() => setSaved(false), 3000);
+        }
       }, 2200);
       return;
     }
@@ -293,11 +315,200 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
     setTimeout(() => setSaved(false), 2500);
   };
 
+  const handleRetryValidation = () => {
+    setValidationFailed(false);
+    setFailureReason("");
+    handleSave("Sent");
+  };
+
   const copyIRN = () => {
     if (!irn) return;
     navigator.clipboard.writeText(irn).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+
+  const handleDownloadPDF = () => {
+    const win = window.open("", "_blank", "width=850,height=1100");
+    const linesHTML = lines.filter(l => l.description || l.qty).map((l, i) => {
+      const t = lineTotal(l);
+      return `
+        <tr style="border-bottom:1px solid #f0f0f0;">
+          <td style="padding:10px 12px;font-size:13px;color:#374151;">${i + 1}</td>
+          <td style="padding:10px 12px;">
+            <div style="font-size:13px;font-weight:600;color:#1a1f36;">${l.description || "—"}</div>
+            ${l.sku ? `<div style="font-size:11px;color:#9ca3af;font-family:monospace;margin-top:2px;">${l.sku}</div>` : ""}
+          </td>
+          <td style="padding:10px 12px;font-size:13px;color:#374151;text-align:center;">${l.qty}</td>
+          <td style="padding:10px 12px;font-size:13px;color:#374151;text-align:right;">${fmt(l.unitPrice)}</td>
+          <td style="padding:10px 12px;font-size:13px;color:#374151;text-align:center;">${l.discount || 0}%</td>
+          <td style="padding:10px 12px;font-size:13px;color:#374151;text-align:center;">${l.taxRate || 0}%</td>
+          <td style="padding:10px 12px;font-size:13.5px;font-weight:700;color:#1a1f36;text-align:right;">${fmt(t.total)}</td>
+        </tr>`;
+    }).join("");
+
+    const extraHTML = extraCharges.filter(c => c.label).map(c => `
+      <tr>
+        <td style="padding:6px 0;font-size:13px;color:#6b7280;">${c.label}</td>
+        <td style="padding:6px 0;font-size:13px;font-weight:600;color:#374151;text-align:right;">+${fmt(parseFloat(c.amount)||0)}</td>
+      </tr>`).join("");
+
+    win.document.write(`<!DOCTYPE html>
+<html><head><title>${invoiceNumber}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1f36; padding: 48px 52px; font-size: 14px; }
+  @media print {
+    body { padding: 32px 40px; }
+    .no-print { display: none !important; }
+    @page { margin: 0; size: A4; }
+  }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid #f0f0f0; }
+  .brand-name { font-size: 24px; font-weight: 800; color: #e8472a; letter-spacing: -0.5px; }
+  .brand-tag { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+  .invoice-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; text-align: right; margin-bottom: 4px; }
+  .invoice-number { font-size: 22px; font-weight: 800; color: #1a1f36; text-align: right; letter-spacing: -0.3px; }
+  .status-badge { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 20px; background: #f0f0f0; color: #6b7280; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 32px; }
+  .meta-section { }
+  .meta-label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .meta-value { font-size: 14px; font-weight: 600; color: #1a1f36; margin-bottom: 3px; }
+  .meta-sub { font-size: 12.5px; color: #6b7280; line-height: 1.5; }
+  .dates-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 32px; padding: 16px 20px; background: #f9fafb; border-radius: 10px; }
+  .date-item-label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+  .date-item-value { font-size: 13.5px; font-weight: 700; color: #1a1f36; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  thead tr { background: #f4f5f7; }
+  thead th { padding: 10px 12px; font-size: 10.5px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.6px; text-align: left; }
+  thead th.right { text-align: right; }
+  thead th.center { text-align: center; }
+  .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 32px; }
+  .totals-table { width: 320px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px; color: #6b7280; border-bottom: 1px solid #f5f5f5; }
+  .totals-row.bold { font-weight: 700; color: #1a1f36; }
+  .grand-total-row { display: flex; justify-content: space-between; padding: 12px 16px; background: #1a1f36; border-radius: 8px; margin-top: 8px; }
+  .grand-label { font-size: 14px; font-weight: 700; color: #fff; }
+  .grand-value { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .amount-due-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #e8472a; border-radius: 8px; margin-top: 6px; }
+  .due-label { font-size: 13px; font-weight: 700; color: #fff; opacity: 0.85; }
+  .due-value { font-size: 18px; font-weight: 800; color: #fff; }
+  .irn-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 28px; }
+  .irn-label { font-size: 10px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+  .irn-value { font-family: monospace; font-size: 13px; font-weight: 700; color: #1a1f36; letter-spacing: 0.5px; }
+  .notes-section { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+  .notes-box { padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 8px; }
+  .notes-title { font-size: 10.5px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+  .notes-text { font-size: 12.5px; color: #6b7280; line-height: 1.6; }
+  .footer { padding-top: 20px; border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+  .footer-brand { font-size: 13px; font-weight: 700; color: #e8472a; }
+  .footer-note { font-size: 11px; color: #9ca3af; }
+  .print-btn { position: fixed; top: 20px; right: 20px; padding: 10px 22px; background: #e8472a; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 12px rgba(232,71,42,.4); }
+</style></head>
+<body>
+  <button class="print-btn no-print" onclick="window.print()">⬇ Download PDF</button>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="brand-name">FETCH<sup style="font-size:11px">TM</sup></div>
+      <div class="brand-tag">Let's File Smarter, Together</div>
+    </div>
+    <div style="text-align:right">
+      <div class="invoice-label">Invoice</div>
+      <div class="invoice-number">${invoiceNumber}</div>
+      <div class="status-badge" style="background:${status==='Paid'?'#f0fdf4':status==='Sent'?'#eff6ff':status==='Overdue'?'#fef2f2':'#f4f5f7'};color:${status==='Paid'?'#16a34a':status==='Sent'?'#3b82f6':status==='Overdue'?'#dc2626':'#6b7280'}">${status}</div>
+    </div>
+  </div>
+
+  <!-- Bill To + From -->
+  <div class="meta-grid">
+    <div class="meta-section">
+      <div class="meta-label">Bill To</div>
+      <div class="meta-value">${customer || "—"}</div>
+      ${customerObj ? `<div class="meta-sub">${customerObj.email || ""}<br/>${customerObj.address || ""}</div>` : ""}
+      ${customerObj?.tin ? `<div style="margin-top:6px;font-size:11px;color:#9ca3af;">TIN: <span style="font-family:monospace;font-weight:600;color:#374151">${customerObj.tin}</span></div>` : ""}
+    </div>
+    <div class="meta-section" style="text-align:right">
+      <div class="meta-label">From</div>
+      <div class="meta-value">Your Business Name</div>
+      <div class="meta-sub">support@fetchinvoice.ng</div>
+    </div>
+  </div>
+
+  <!-- Dates -->
+  <div class="dates-grid">
+    <div>
+      <div class="date-item-label">Issue Date</div>
+      <div class="date-item-value">${fmtDate(issueDate) || "—"}</div>
+    </div>
+    <div>
+      <div class="date-item-label">Due Date</div>
+      <div class="date-item-value" style="color:${status==='Overdue'?'#dc2626':'#1a1f36'}">${fmtDate(dueDate) || "—"}</div>
+    </div>
+    <div>
+      <div class="date-item-label">Payment Terms</div>
+      <div class="date-item-value">${paymentTerms}</div>
+    </div>
+  </div>
+
+  <!-- IRN -->
+  ${irn ? `
+  <div class="irn-box">
+    <div class="irn-label">✓ FIRS Invoice Reference Number (IRN)</div>
+    <div class="irn-value">${irn}</div>
+  </div>` : ""}
+
+  <!-- Line items -->
+  <table>
+    <thead>
+      <tr>
+        <th style="width:36px">#</th>
+        <th>Item / Description</th>
+        <th class="center" style="width:60px">Qty</th>
+        <th class="right" style="width:120px">Unit Price</th>
+        <th class="center" style="width:70px">Disc %</th>
+        <th class="center" style="width:70px">Tax %</th>
+        <th class="right" style="width:120px">Total</th>
+      </tr>
+    </thead>
+    <tbody>${linesHTML || `<tr><td colspan="7" style="padding:24px;text-align:center;color:#9ca3af;font-size:13px;">No line items</td></tr>`}</tbody>
+  </table>
+
+  <!-- Totals -->
+  <div class="totals-wrap">
+    <div class="totals-table">
+      <div class="totals-row"><span>Subtotal</span><span>${fmt(linesSummary.subtotal)}</span></div>
+      ${totalDiscount > 0 ? `<div class="totals-row"><span>Discount</span><span style="color:#16a34a">−${fmt(totalDiscount)}</span></div>` : ""}
+      ${linesSummary.tax > 0 ? `<div class="totals-row"><span>VAT / Tax</span><span>+${fmt(linesSummary.tax)}</span></div>` : ""}
+      ${extraHTML}
+      <div class="grand-total-row">
+        <span class="grand-label">Grand Total</span>
+        <span class="grand-value">${fmt(grandTotal)}</span>
+      </div>
+      ${parseFloat(deposit) > 0 ? `<div class="totals-row" style="padding:8px 0"><span>Deposit Paid</span><span style="color:#16a34a">−${fmt(parseFloat(deposit))}</span></div>` : ""}
+      <div class="amount-due-row">
+        <span class="due-label">Amount Due</span>
+        <span class="due-value">${fmt(amountDue)}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes & Terms -->
+  ${(notes || terms) ? `
+  <div class="notes-section">
+    ${notes ? `<div class="notes-box"><div class="notes-title">Notes</div><div class="notes-text">${notes}</div></div>` : "<div></div>"}
+    ${terms ? `<div class="notes-box"><div class="notes-title">Terms & Conditions</div><div class="notes-text">${terms}</div></div>` : ""}
+  </div>` : ""}
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-brand">FETCH<sup style="font-size:9px">TM</sup></div>
+    <div class="footer-note">Generated by Fetch · ${invoiceNumber} · ${fmtDate(issueDate) || new Date().toLocaleDateString()}</div>
+    <div class="footer-note">support@fetchinvoice.ng</div>
+  </div>
+</body></html>`);
+    win.document.close();
   };
 
   const isDraft    = status === "Draft";
@@ -356,6 +567,47 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
 
         {/* Right: status-aware actions */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
+          {/* ── DEMO TOGGLE — remove in production ── */}
+          {isDraft && (
+            <div style={{ display: "flex", alignItems: "center", gap: 0, background: "#f4f5f7", borderRadius: 8, padding: 3, border: "1px solid #e5e7eb" }}>
+              <button
+                onClick={() => setSimResult("pass")}
+                style={{ padding: "5px 12px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s",
+                  background: simResult === "pass" ? "#16a34a" : "transparent",
+                  color: simResult === "pass" ? "#fff" : "#9ca3af" }}>
+                ✓ Pass
+              </button>
+              <button
+                onClick={() => setSimResult("fail")}
+                style={{ padding: "5px 12px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s",
+                  background: simResult === "fail" ? "#dc2626" : "transparent",
+                  color: simResult === "fail" ? "#fff" : "#9ca3af" }}>
+                ✗ Fail
+              </button>
+            </div>
+          )}
+
+          {/* Download PDF — always available */}
+          <button onClick={handleDownloadPDF}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #e5e7eb", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#374151" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#f4f5f7"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}>
+            <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            PDF
+          </button>
+
+          {/* Flag as Disputed */}
+          {!isDraft && (
+            <button onClick={() => setDisputeOpen(true)}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: `1px solid ${disputed ? "#fecaca" : "#e5e7eb"}`, borderRadius: 7, background: disputed ? "#fef2f2" : "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600, color: disputed ? "#dc2626" : "#374151", transition: "all .15s" }}
+              onMouseEnter={e => { if (!disputed) e.currentTarget.style.background = "#f4f5f7"; }}
+              onMouseLeave={e => { if (!disputed) e.currentTarget.style.background = "#fff"; }}>
+              <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 21V4m0 0l7-1 4 1 7-1v13l-7 1-4-1-7 1V4z"/></svg>
+              {disputed ? "Disputed" : "Flag Dispute"}
+            </button>
+          )}
+
           {saved && (
             <span style={{ fontSize: 12.5, color: "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: 4, animation: "fadeIn .3s ease" }}>
               <svg width={14} height={14} fill="none" stroke="#16a34a" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
@@ -462,7 +714,7 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
                 <input value={invoiceNumber} readOnly style={{ ...inp({ background: "#f9fafb", color: "#9ca3af", fontFamily: "monospace", fontWeight: 700, cursor: "default" }) }} />
               </Field>
               <Field label="Issue Date" required>
-                <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} style={inp()} />
+                <SingleDatePicker value={issueDate} onChange={v => setIssueDate(v)} placeholder="Select issue date" />
               </Field>
               <Field label="Payment Terms">
                 <CustomSelect value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS} searchable />
@@ -470,7 +722,7 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
             </div>
             <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16 }}>
               <Field label="Due Date">
-                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={inp()} />
+                <SingleDatePicker value={dueDate} onChange={v => setDueDate(v)} placeholder="Select due date" />
               </Field>
               <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 1 }}>
                 <span style={{ fontSize: 12, color: "#9ca3af", display: "flex", gap: 4, alignItems: "center" }}>
@@ -480,13 +732,48 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
             </div>
 
             {/* ── IRN Row — only shown after FIRS validation ── */}
-            {(irn || validating) && (
+            {(irn || validating || validationFailed) && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #f0f0f0" }}>
                 <Field label="Invoice Reference Number (IRN)">
                   {validating ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "1px solid #fde68a", borderRadius: 8, background: "#fffbeb" }}>
                       <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth={2.5} style={{ flexShrink: 0, animation: "spin 1s linear infinite" }}><path strokeLinecap="round" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                       <span style={{ fontSize: 13, color: "#b45309", fontWeight: 600 }}>Submitting invoice to FIRS for validation…</span>
+                    </div>
+                  ) : validationFailed ? (
+                    <div style={{ border: "1px solid #fecaca", borderRadius: 8, background: "#fff5f5", overflow: "hidden" }}>
+                      {/* Error header */}
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderBottom: "1px solid #fecaca" }}>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                          <svg width={14} height={14} fill="none" stroke="#dc2626" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, color: "#dc2626", marginBottom: 3 }}>FIRS Validation Failed</div>
+                          <div style={{ fontSize: 12.5, color: "#b91c1c", lineHeight: 1.5 }}>{failureReason}</div>
+                        </div>
+                      </div>
+                      {/* Actions */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#fff" }}>
+                        <button
+                          onClick={handleRetryValidation}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: "#dc2626", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                          onMouseEnter={e => e.currentTarget.style.background = "#b91c1c"}
+                          onMouseLeave={e => e.currentTarget.style.background = "#dc2626"}>
+                          <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                          Retry Validation
+                        </button>
+                        <button
+                          onClick={() => { setValidationFailed(false); setFailureReason(""); }}
+                          style={{ padding: "7px 14px", background: "none", color: "#6b7280", border: "1px solid #e5e7eb", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                          onMouseEnter={e => e.currentTarget.style.background = "#f4f5f7"}
+                          onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                          Dismiss
+                        </button>
+                        <a href="#" onClick={e => e.preventDefault()} style={{ marginLeft: "auto", fontSize: 12.5, color: "#dc2626", fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                          <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" d="M12 16v-4M12 8h.01"/></svg>
+                          FIRS error codes
+                        </a>
+                      </div>
                     </div>
                   ) : (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -592,6 +879,27 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
               </Field>
             </div>
           </div>
+
+          {/* ── Dispute Panel ── */}
+          {disputed && (
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #fecaca", padding: "20px 24px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width={13} height={13} fill="none" stroke="#dc2626" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: "#dc2626" }}>Invoice Flagged as Disputed</div>
+                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 1 }}>Log the reason and any follow-up actions for your records.</div>
+                </div>
+                <button onClick={() => { setDisputed(false); setDisputeNotes(""); }} style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>Remove flag</button>
+              </div>
+              <Field label="Dispute Notes">
+                <textarea rows={4} value={disputeNotes} onChange={e => setDisputeNotes(e.target.value)}
+                  placeholder="e.g. Customer disputes qty on line 3 — claims 4 units not 6. Following up with PO on file. Revised invoice to be issued by Mar 15."
+                  style={{ ...inp(), resize: "vertical", lineHeight: 1.65, borderColor: "#fecaca" }} />
+              </Field>
+            </div>
+          )}
         </div>
 
         {/* ═══ RIGHT COLUMN — Invoice Summary (sticky) ═══ */}
@@ -815,6 +1123,40 @@ export default function FetchInvoiceBuilder({ navigate, invoiceData }) {
           </div>
         </div>
       </div>
+
+      {/* Dispute flag modal */}
+      {disputeOpen && (
+        <>
+          <div onClick={() => setDisputeOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 200 }} />
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 440, background: "#fff", borderRadius: 16, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,.2)", overflow: "hidden" }}>
+            <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #fecaca", background: "#fff5f5" }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#dc2626", marginBottom: 4 }}>
+                {disputed ? "Remove Dispute Flag?" : "Flag Invoice as Disputed?"}
+              </div>
+              <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.55 }}>
+                {disputed
+                  ? "This will remove the dispute flag and clear your dispute notes."
+                  : "Marks this invoice for your records only. It won't change the invoice status or notify the customer."}
+              </div>
+            </div>
+            {!disputed && (
+              <div style={{ padding: "16px 24px" }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Reason (optional)</label>
+                <textarea rows={3} value={disputeNotes} onChange={e => setDisputeNotes(e.target.value)}
+                  placeholder="e.g. Customer disputes qty on line 3, claims 4 units not 6…"
+                  style={{ width: "100%", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 13.5, lineHeight: 1.6, resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+              </div>
+            )}
+            <div style={{ padding: "14px 24px", display: "flex", gap: 10, borderTop: "1px solid #f0f0f0" }}>
+              <button onClick={() => setDisputeOpen(false)} style={{ flex: 1, padding: "10px", border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff", fontSize: 14, fontWeight: 600, color: "#374151", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setDisputed(!disputed); if (disputed) setDisputeNotes(""); setDisputeOpen(false); }}
+                style={{ flex: 1, padding: "10px", border: "none", borderRadius: 8, background: disputed ? "#6b7280" : "#dc2626", fontSize: 14, fontWeight: 700, color: "#fff", cursor: "pointer" }}>
+                {disputed ? "Remove Flag" : "Flag as Disputed"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
